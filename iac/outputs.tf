@@ -1,24 +1,30 @@
 output "namespace" {
-  value = kubernetes_namespace.mspr.metadata[0].name
+  description = "The Kubernetes namespace where resources are deployed"
+  value       = kubernetes_namespace.mspr.metadata[0].name
 }
 
 output "postgresql_service" {
-  value = "${helm_release.postgresql.name}-postgresql.${kubernetes_namespace.mspr.metadata[0].name}.svc.cluster.local"
+  description = "PostgreSQL service hostname"
+  value       = "${helm_release.postgresql.name}-postgresql.${kubernetes_namespace.mspr.metadata[0].name}.svc.cluster.local"
 }
 
 output "postgresql_port" {
-  value = "5432"
+  description = "PostgreSQL service port"
+  value       = "5432"
 }
 
 output "postgresql_database" {
-  value = var.postgresql_database
+  description = "PostgreSQL database name"
+  value       = var.postgresql_database
 }
 
 output "postgresql_username" {
-  value = var.postgresql_username
+  description = "PostgreSQL username"
+  value       = var.postgresql_username
 }
 
 output "postgresql_password" {
-  value     = var.postgresql_password
-  sensitive = true
+  description = "PostgreSQL password (sensitive)"
+  value       = var.postgresql_password
+  sensitive   = true
 }

@@ -9,7 +9,8 @@ resource "helm_release" "postgresql" {
   repository = "oci://registry-1.docker.io/bitnamicharts"
   chart      = "postgresql"
   version    = "16.6.6"
-  namespace  = kubernetes_namespace.mspr.metadata[0].name
+  namespace  = "mspr"
+  create_namespace = true
 
   set_sensitive = [
     {
