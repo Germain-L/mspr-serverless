@@ -1,0 +1,10 @@
+version: 1.0
+provider:
+  name: openfaas
+  gateway: http://127.0.0.1:8080
+functions:
+  my-pgx-function:
+    lang: go-pgx-gin
+    handler: ./my-pgx-function
+    image: my-pgx-function:latest
+
