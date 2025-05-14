@@ -1,10 +1,36 @@
 version: 1.0
 provider:
   name: openfaas
-  gateway: http://127.0.0.1:8080
+  gateway: https://openfaas.germainleignel.com
 functions:
-  my-pgx-function:
-    lang: go-pgx-gin
-    handler: ./my-pgx-function
-    image: my-pgx-function:latest
+  generate-password:
+    lang: dockerfile
+    handler: ./generate-password
+    image: registry.germainleignel.com/library/generate-password:latest
+    environment:
+      DATABASE_URL: "postgres://postgres:Password123@postgres.mspr.svc.cluster.local:5432/msprdb?sslmode=disable"
+      ENCRYPTION_KEY: "votre_clé_de_chiffrement_très_sécurisée_à_changer_en_production"
+  
+  generate-2fa:
+    lang: dockerfile
+    handler: ./generate-2fa
+    image: registry.germainleignel.com/library/generate-2fa:latest
+    environment:
+      DATABASE_URL: "postgres://postgres:Password123@postgres.mspr.svc.cluster.local:5432/msprdb?sslmode=disable"
+      ENCRYPTION_KEY: "votre_clé_de_chiffrement_très_sécurisée_à_changer_en_production"
+  
+  authenticate:
+    lang: dockerfile
+    handler: ./authenticate
+    image: registry.germainleignel.com/library/authenticate:latest
+    environment:
+      DATABASE_URL: "postgres://postgres:Password123@postgres.mspr.svc.cluster.local:5432/msprdb?sslmode=disable"
+      ENCRYPTION_KEY: "votre_clé_de_chiffrement_très_sécurisée_à_changer_en_production"
+      
+  hello-world:
+    lang: dockerfile
+    handler: ./hello-world
+    image: registry.germainleignel.com/library/hello-world:latest
+    environment:
+      DATABASE_URL: "postgres://postgres:Password123@postgres.mspr.svc.cluster.local:5432/msprdb?sslmode=disable"
 
