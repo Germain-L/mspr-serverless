@@ -10,6 +10,7 @@ functions:
     environment:
       DATABASE_URL: "postgres://postgres:Password123@postgres.mspr.svc.cluster.local:5432/msprdb?sslmode=disable"
       ENCRYPTION_KEY: "votre_clé_de_chiffrement_très_sécurisée_à_changer_en_production"
+      fprocess: "handler"
   
   generate-2fa:
     lang: dockerfile
@@ -18,6 +19,7 @@ functions:
     environment:
       DATABASE_URL: "postgres://postgres:Password123@postgres.mspr.svc.cluster.local:5432/msprdb?sslmode=disable"
       ENCRYPTION_KEY: "votre_clé_de_chiffrement_très_sécurisée_à_changer_en_production"
+      fprocess: "handler"
   
   authenticate:
     lang: dockerfile
@@ -26,6 +28,7 @@ functions:
     environment:
       DATABASE_URL: "postgres://postgres:Password123@postgres.mspr.svc.cluster.local:5432/msprdb?sslmode=disable"
       ENCRYPTION_KEY: "votre_clé_de_chiffrement_très_sécurisée_à_changer_en_production"
+      fprocess: "handler"
       
   hello-world:
     lang: dockerfile
@@ -33,4 +36,5 @@ functions:
     image: registry.germainleignel.com/library/hello-world:latest
     environment:
       DATABASE_URL: "postgres://postgres:Password123@postgres.mspr.svc.cluster.local:5432/msprdb?sslmode=disable"
+      fprocess: "handler"
 

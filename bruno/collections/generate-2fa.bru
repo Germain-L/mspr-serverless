@@ -1,0 +1,35 @@
+meta {
+  name: generate-2fa
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/function/generate-2fa
+  body: form-urlencoded
+  auth: none
+}
+
+headers {
+  Content-Type: application/x-www-form-urlencoded
+}
+
+body:form-urlencoded {
+  username: testuser
+}
+
+tests {
+  test("Status code is 200") {
+    expect(res.status).to.equal(200);
+  }
+  
+  test("Response contains QR code") {
+    expect(res.body).to.have.property("qr_code");
+    expect(res.body.qr_code).to.be.a("string");
+  }
+  
+  test("Response contains success message") {
+    expect(res.body).to.have.property("message");
+    expect(res.body.message).to.include("2FA secret generated successfully");
+  }
+} 

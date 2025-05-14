@@ -1,0 +1,15 @@
+meta {
+  name: smoke
+  type: http
+  seq: 2
+}
+
+get {
+  url: https://example.com
+  body: none
+  auth: none
+}
+
+assert {
+  status: eq 200
+}
