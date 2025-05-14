@@ -10,7 +10,8 @@ functions:
     environment:
       DATABASE_URL: "postgres://postgres:Password123@postgres.mspr.svc.cluster.local:5432/msprdb?sslmode=disable"
       ENCRYPTION_KEY: "votre_clé_de_chiffrement_très_sécurisée_à_changer_en_production"
-      fprocess: "handler"
+      fprocess: "/home/app/generate-password"
+      write_debug: "true"
   
   generate-2fa:
     lang: dockerfile
@@ -19,7 +20,8 @@ functions:
     environment:
       DATABASE_URL: "postgres://postgres:Password123@postgres.mspr.svc.cluster.local:5432/msprdb?sslmode=disable"
       ENCRYPTION_KEY: "votre_clé_de_chiffrement_très_sécurisée_à_changer_en_production"
-      fprocess: "handler"
+      fprocess: "/home/app/generate-2fa"
+      write_debug: "true"
   
   authenticate:
     lang: dockerfile
@@ -28,7 +30,8 @@ functions:
     environment:
       DATABASE_URL: "postgres://postgres:Password123@postgres.mspr.svc.cluster.local:5432/msprdb?sslmode=disable"
       ENCRYPTION_KEY: "votre_clé_de_chiffrement_très_sécurisée_à_changer_en_production"
-      fprocess: "handler"
+      fprocess: "/home/app/authenticate"
+      write_debug: "true"
       
   hello-world:
     lang: dockerfile
@@ -36,4 +39,5 @@ functions:
     image: registry.germainleignel.com/library/hello-world:latest
     environment:
       DATABASE_URL: "postgres://postgres:Password123@postgres.mspr.svc.cluster.local:5432/msprdb?sslmode=disable"
-      fprocess: "handler"
+      fprocess: "/home/app/hello-world"
+      write_debug: "true"

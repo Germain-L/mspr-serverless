@@ -1,36 +1,34 @@
-FROM golang:1.21-alpine AS builder
-
-WORKDIR /app
-COPY . .
-
-# Use go modules
-ENV GO111MODULE=on
-
-RUN go mod download
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o authenticate .
-
 FROM ghcr.io/openfaas/classic-watchdog:0.2.1 as watchdog
 
-FROM alpine:3.18
+FROM golang:1.21-alpine
 
-RUN apk --no-cache add ca-certificates
-
-WORKDIR /app
-
-COPY --from=builder /app/authenticate /app/authenticate
+# Add the watchdog from the watchdog image
 COPY --from=watchdog /fwatchdog /usr/bin/fwatchdog
-RUN chmod +x /app/authenticate
 RUN chmod +x /usr/bin/fwatchdog
 
-# Add non root user
+# Create a non-root user
 RUN addgroup -S app && adduser -S -g app app
-RUN chown -R app /app
+
+# Set up the app directory
+WORKDIR /home/app
+
+# Copy the handler code
+COPY . .
+
+# Install dependencies
+RUN apk --no-cache add ca-certificates
+RUN go mod download
+RUN go build -o authenticate .
+
+# Change ownership and permissions
+RUN chown -R app:app /home/app
+RUN chmod +x /home/app/authenticate
 
 USER app
 
-# Set process to run
-ENV fprocess="/app/authenticate"
-ENV write_debug="false"
+# Set up watchdog
+ENV fprocess="/home/app/authenticate"
+ENV write_debug="true"
 
 EXPOSE 8080
 
