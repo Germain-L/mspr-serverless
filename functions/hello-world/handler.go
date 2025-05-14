@@ -8,7 +8,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -60,46 +59,49 @@ func ConnectDB() (*pgxpool.Pool, error) {
 	return pool, nil
 }
 
-// Handle is the entry point for the function using Gin
-func Handle() {
+// Handle is the entry point for the function
+func Handle(w http.ResponseWriter, r *http.Request) {
+	// Initialize database connection
 	var err error
-	dbPool, err = ConnectDB()
-	if err != nil {
-		log.Printf("ERROR: Failed to connect to database on startup: %v", err)
+	if dbPool == nil {
+		dbPool, err = ConnectDB()
+		if err != nil {
+			log.Printf("ERROR: Failed to connect to database: %v", err)
+		}
 	}
 
-	gin.SetMode(gin.ReleaseMode)
-	router := gin.Default()
+	// Handle different paths
+	switch r.URL.Path {
+	case "/", "":
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"status": "OK", "message": "Welcome to the Go function!"}`))
 
-	router.GET("/", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "OK", "message": "Welcome to the Go Gin/pgx function!"})
-	})
-
-	router.GET("/db-ping", func(c *gin.Context) {
+	case "/db-ping":
 		if dbPool == nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Database not connected"})
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusServiceUnavailable)
+			w.Write([]byte(`{"error": "Database not connected"}`))
 			return
 		}
-		ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
+
+		ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 		defer cancel()
 
 		if err := dbPool.Ping(ctx); err != nil {
 			log.Printf("ERROR: Failed to ping database: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to ping database", "details": err.Error()})
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(fmt.Sprintf(`{"error": "Failed to ping database", "details": "%s"}`, err.Error())))
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"status": "OK", "message": "Database ping successful"})
-	})
 
-	port := os.Getenv("gin_port")
-	if port == "" {
-		port = "8081"
-	}
-	addr := fmt.Sprintf(":%s", port)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"status": "OK", "message": "Database ping successful"}`))
 
-	log.Printf("Gin server listening on %s", addr)
-	if err := router.Run(addr); err != nil {
-		log.Fatalf("Failed to run Gin server: %v", err)
+	default:
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(`{"error": "Path not found"}`))
 	}
 }
 
@@ -129,8 +131,4 @@ func getEnvAsDuration(key string, fallback time.Duration) time.Duration {
 		return fallback
 	}
 	return d
-}
-
-func main() {
-	Handle()
 }
