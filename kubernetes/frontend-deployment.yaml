@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cofrap-frontend
+  labels:
+    app: cofrap
+    component: frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: cofrap
+      component: frontend
+  template:
+    metadata:
+      labels:
+        app: cofrap
+        component: frontend
+    spec:
+      containers:
+      - name: frontend
+        image: registry.germainleignel.com/library/cofrap-frontend:latest
+        ports:
+        - containerPort: 80
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        env:
+        - name: NODE_ENV
+          value: "production"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cofrap-frontend
+  labels:
+    app: cofrap
+    component: frontend
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+  selector:
+    app: cofrap
+    component: frontend
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cofrap-frontend
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: cofrap.germainleignel.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: cofrap-frontend
+            port:
+              number: 80
+  tls:
+  - hosts:
+    - cofrap.germainleignel.com
+    secretName: cofrap-tls

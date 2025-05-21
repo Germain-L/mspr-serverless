@@ -1,0 +1,26 @@
+version: 1.0
+provider:
+  name: openfaas
+  gateway: http://127.0.0.1:8080
+  namespace: cofrap
+
+functions:
+  authenticate:
+    lang: python3
+    handler: ./handler
+    image: registry.germainleignel.com/library/authenticate:latest
+    environment:
+      write_debug: "true"
+      read_debug: "true"
+      combine_output: "false"
+    environment_file:
+      - .env
+    secrets:
+      - db-credentials
+      - jwt-secret
+    annotations:
+      topic: "authentication"
+    labels:
+      com.openfaas.scale.min: "2"
+      com.openfaas.scale.max: "20"
+      com.openfaas.scale.factor: "20"
