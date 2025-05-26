@@ -1,0 +1,25 @@
+version: 1.0
+provider:
+  name: openfaas
+  gateway: https://openfaas.germainleignel.com
+functions:
+  generate-password:
+    lang: python3-http
+    handler: ./generate-password
+    image: registry.germainleignel.com/library/generate-password:latest
+
+  generate-2fa:
+    lang: python3-http
+    handler: ./generate-2fa
+    image: registry.germainleignel.com/library/generate-2fa:latest
+
+  authenticate-user:
+    lang: python3-http
+    handler: ./authenticate-user
+    image: registry.germainleignel.com/library/authenticate-user:latest
+
+  check-user-status:
+    lang: python3-http
+    handler: ./check-user-status
+    image: registry.germainleignel.com/library/check-user-status:latest
+

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: db-migrations
+  namespace: cofrap
+data:
+  001_initial_schema.up.sql: |-
+    CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(255) UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        mfa TEXT,
+        gendate BIGINT NOT NULL,
+        expired BOOLEAN DEFAULT FALSE
+    );
