@@ -1,3 +1,15 @@
+"""
+Ce module fournit une fonction OpenFaaS pour générer un mot de passe sécurisé
+et créer un nouvel utilisateur dans la base de données.
+
+Il effectue les opérations suivantes :
+- Génère un mot de passe aléatoire sécurisé.
+- Hache le mot de passe en utilisant bcrypt.
+- Insère un nouvel utilisateur dans la base de données avec le nom d'utilisateur fourni,
+  le mot de passe haché et la date de création.
+- Crée un QR code contenant le nom d'utilisateur et le mot de passe en clair (à des fins de démonstration).
+- Renvoie l'ID de l'utilisateur, le mot de passe en clair et le QR code en base64.
+"""
 import os
 import json
 import secrets
@@ -12,7 +24,7 @@ from datetime import datetime, timezone
 from dotenv import load_dotenv
 
 def get_db_connection():
-    """Create and return a database connection."""
+    """Crée et retourne une connexion à la base de données."""
     load_dotenv()
     try:
         conn = psycopg2.connect(
@@ -27,7 +39,7 @@ def get_db_connection():
         raise Exception(f"Failed to connect to database: {str(e)}")
 
 def generate_secure_password(length=24):
-    """Generate a secure random password with mixed case, numbers and special chars."""
+    """Génère un mot de passe aléatoire sécurisé avec des lettres minuscules et majuscules, des chiffres et des caractères spéciaux."""
     alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
     while True:
         password = ''.join(secrets.choice(alphabet) for _ in range(length))
@@ -39,7 +51,7 @@ def generate_secure_password(length=24):
             return password
 
 def create_qr_code(data):
-    """Create a QR code and return it as a base64 encoded string."""
+    """Crée un QR code et le retourne sous forme de chaîne encodée en base64."""
     qr = qrcode.QRCode(
         version=1,
         error_correction=qrcode.constants.ERROR_CORRECT_L,
@@ -57,6 +69,33 @@ def create_qr_code(data):
     return base64.b64encode(buffered.getvalue()).decode('utf-8')
 
 def handle(event, context):
+    """Point d'entrée principal pour la fonction de génération de mot de passe et de création d'utilisateur.
+
+    Ce gestionnaire traite les requêtes pour créer un nouvel utilisateur avec un mot de passe généré.
+    Il attend un corps JSON contenant 'username'.
+
+    Le processus comprend :
+    1. Analyse de la requête entrante pour obtenir le nom d'utilisateur.
+    2. Génération d'un mot de passe sécurisé aléatoire.
+    3. Hachage du mot de passe généré.
+    4. Enregistrement de la date de création actuelle.
+    5. Connexion à la base de données.
+    6. Vérification si le nom d'utilisateur existe déjà.
+    7. Insertion du nouvel utilisateur dans la base de données avec le nom d'utilisateur,
+       le mot de passe haché et la date de création.
+    8. Création d'un QR code contenant le nom d'utilisateur et le mot de passe en clair.
+    9. Renvoi d'une réponse HTTP avec le statut, un message, l'ID de l'utilisateur,
+       le mot de passe en clair (pour démo) et le QR code encodé en base64.
+
+    Args:
+        event: L'objet événement contenant les détails de la requête (par exemple, corps, en-têtes).
+               Le corps de la requête doit être un JSON avec le champ 'username'.
+        context: L'objet contexte d'exécution (non utilisé dans cette fonction).
+
+    Returns:
+        dict: Un dictionnaire représentant la réponse HTTP, contenant 'statusCode' et 'body'.
+              Le corps est une chaîne JSON avec les informations de l'utilisateur créé et son mot de passe.
+    """
     conn = None
     cursor = None
     try:

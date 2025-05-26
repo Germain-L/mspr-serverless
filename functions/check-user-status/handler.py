@@ -1,3 +1,8 @@
+"""
+Ce module fournit une fonction OpenFaaS pour vérifier le statut d'un utilisateur.
+Il interroge la base de données pour déterminer si un utilisateur existe,
+si son compte a expiré et s'il a activé l'authentification à deux facteurs (2FA).
+"""
 import os
 import json
 import psycopg2
@@ -6,7 +11,7 @@ from datetime import datetime, timezone
 from dotenv import load_dotenv
 
 def get_db_connection():
-    """Create and return a database connection."""
+    """Crée et retourne une connexion à la base de données."""
     load_dotenv()
     try:
         conn = psycopg2.connect(
@@ -21,6 +26,34 @@ def get_db_connection():
         raise Exception(f"Failed to connect to database: {str(e)}")
 
 def handle(event, context):
+    """Point d'entrée principal pour la fonction de vérification du statut de l'utilisateur.
+
+    Ce gestionnaire traite les requêtes pour vérifier le statut d'un utilisateur.
+    Il attend un corps JSON contenant 'username'.
+
+    Le processus comprend :
+    1. Analyse de la requête entrante pour obtenir le nom d'utilisateur.
+    2. Connexion à la base de données.
+    3. Interrogation de la base de données pour obtenir les informations sur l'utilisateur :
+        - Si l'authentification à deux facteurs (2FA) est activée.
+        - Si le compte est marqué comme expiré.
+        - Si le compte a expiré en fonction de sa date de création (plus de 6 mois).
+    4. Si le compte a expiré en fonction du temps et n'est pas déjà marqué comme expiré,
+       mise à jour de l'indicateur d'expiration dans la base de données.
+    5. Renvoi d'une réponse HTTP avec le statut de l'utilisateur :
+        - 'exists': booléen indiquant si l'utilisateur existe.
+        - 'expired': booléen indiquant si le compte est expiré.
+        - 'has_2fa': booléen indiquant si la 2FA est activée.
+
+    Args:
+        event: L'objet événement contenant les détails de la requête (par exemple, corps, en-têtes).
+               Le corps de la requête doit être un JSON avec le champ 'username'.
+        context: L'objet contexte d'exécution (non utilisé dans cette fonction).
+
+    Returns:
+        dict: Un dictionnaire représentant la réponse HTTP, contenant 'statusCode' et 'body'.
+              Le corps est une chaîne JSON avec les informations sur le statut de l'utilisateur.
+    """
     try:
         # Parse incoming request
         try:

@@ -1,3 +1,8 @@
+"""
+Ce module gère l'authentification des utilisateurs pour une fonction OpenFaaS.
+Il comprend la vérification du mot de passe, l'authentification à deux facteurs (2FA) via TOTP,
+la gestion de l'expiration des comptes et l'interaction avec une base de données PostgreSQL.
+"""
 import os
 import json
 import bcrypt
@@ -12,10 +17,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Constants
-ACCOUNT_EXPIRY_DAYS = 180  # 6 months
+ACCOUNT_EXPIRY_DAYS = 180  # 6 mois
 
 def get_db_connection():
-    """Create and return a database connection."""
+    """Crée et retourne une connexion à la base de données."""
     try:
         conn = psycopg2.connect(
             dbname=os.getenv('DB_NAME'),
@@ -29,7 +34,7 @@ def get_db_connection():
         raise Exception(f"Failed to connect to database: {str(e)}")
 
 def get_encryption_key():
-    """Get the encryption key from environment variables."""
+    """Récupère la clé de chiffrement à partir des variables d'environnement."""
     key = os.getenv('ENCRYPTION_KEY')
     if not key:
         raise ValueError("ENCRYPTION_KEY environment variable not set")
@@ -42,7 +47,17 @@ def get_encryption_key():
     return key
 
 def decrypt_secret(encrypted_secret):
-    """Decrypt the TOTP secret."""
+    """Déchiffre le secret TOTP.
+
+    Args:
+        encrypted_secret (str): Le secret chiffré encodé en base64.
+
+    Returns:
+        str or None: Le secret déchiffré, ou None si aucun secret chiffré n'est fourni.
+
+    Raises:
+        ValueError: Si la clé de chiffrement n'est pas définie ou si le jeton est invalide.
+    """
     if not encrypted_secret:
         return None
         
@@ -55,14 +70,36 @@ def decrypt_secret(encrypted_secret):
         raise ValueError("Invalid encryption token")
 
 def check_password(stored_password, provided_password):
-    """Verify the provided password against the stored hash."""
+    """Vérifie le mot de passe fourni par rapport au mot de passe stocké.
+
+    Args:
+        stored_password (str): Le mot de passe stocké.
+        provided_password (str): Le mot de passe fourni.
+
+    Returns:
+        bool: True si les mots de passe correspondent, False sinon.
+
+    Raises:
+        ValueError: Si la vérification du mot de passe échoue pour une raison inattendue.
+    """
     try:
         return bcrypt.checkpw(provided_password.encode('utf-8'), stored_password.encode('utf-8'))
     except Exception as e:
         raise ValueError(f"Password verification failed: {str(e)}")
 
 def verify_totp(secret, totp_code):
-    """Verify the TOTP code against the secret."""
+    """Vérifie le code TOTP par rapport au secret.
+
+    Args:
+        secret (str): Le secret TOTP de l'utilisateur.
+        totp_code (str): Le code TOTP fourni par l'utilisateur.
+
+    Returns:
+        bool: True si le code TOTP est valide, False sinon.
+
+    Raises:
+        ValueError: Si la vérification TOTP échoue pour une raison inattendue.
+    """
     if not secret or not totp_code:
         return False
     
@@ -73,7 +110,14 @@ def verify_totp(secret, totp_code):
         raise ValueError(f"TOTP verification failed: {str(e)}")
 
 def is_account_expired(gendate_timestamp):
-    """Check if the account has expired based on creation date."""
+    """Vérifie si le compte a expiré en fonction de la date de création.
+
+    Args:
+        gendate_timestamp (int): La date de création du compte en timestamp.
+
+    Returns:
+        bool: True si le compte a expiré, False sinon.
+    """
     if not gendate_timestamp:
         return True
         
@@ -82,6 +126,35 @@ def is_account_expired(gendate_timestamp):
     return datetime.now(timezone.utc) > expiry_date
 
 def handle(event, context):
+    """Point d'entrée principal pour la fonction d'authentification OpenFaaS.
+
+    Ce gestionnaire traite les requêtes d'authentification des utilisateurs. Il attend un corps JSON
+    contenant 'username', 'password', et optionnellement 'totp_code'.
+
+    Le processus comprend :
+    1. Analyse de la requête entrante.
+    2. Validation des entrées (nom d'utilisateur et mot de passe).
+    3. Connexion à la base de données.
+    4. Récupération des informations de l'utilisateur.
+    5. Vérification du mot de passe.
+    6. Si l'authentification à deux facteurs (2FA) est activée :
+        a. Vérification de la présence du code TOTP.
+        b. Déchiffrement du secret MFA stocké.
+        c. Vérification du code TOTP.
+    7. Vérification de l'expiration du compte (basée sur la date de création et un indicateur 'expired').
+    8. Mise à jour de l'état d'expiration dans la base de données si nécessaire.
+    9. Renvoi d'une réponse HTTP appropriée (succès, échec, compte expiré, etc.).
+
+    Args:
+        event: L'objet événement contenant les détails de la requête (par exemple, corps, en-têtes).
+               Le corps de la requête doit être un JSON avec les champs 'username', 'password',
+               et optionnellement 'totp_code'.
+        context: L'objet contexte d'exécution (non utilisé dans cette fonction).
+
+    Returns:
+        dict: Un dictionnaire représentant la réponse HTTP, contenant 'statusCode' et 'body'.
+              Le corps est une chaîne JSON avec des détails sur le résultat de l'authentification.
+    """
     conn = None
     cursor = None
     try:

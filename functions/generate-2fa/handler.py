@@ -1,3 +1,15 @@
+"""
+Ce module fournit une fonction OpenFaaS pour générer et configurer
+l'authentification à deux facteurs (2FA) pour un utilisateur via TOTP (Time-based One-Time Password).
+
+Il effectue les opérations suivantes :
+- Génère un nouveau secret TOTP.
+- Chiffre le secret avant de le stocker.
+- Crée un URI de provisioning TOTP.
+- Génère un QR code à partir de l'URI.
+- Met à jour l'enregistrement de l'utilisateur dans la base de données avec le secret chiffré.
+- Renvoie le secret (à des fins de démonstration, à supprimer en production) et le QR code en base64.
+"""
 import os
 import json
 import base64
@@ -14,7 +26,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def get_db_connection():
-    """Create and return a database connection."""
+    """Crée et retourne une connexion à la base de données."""
     try:
         conn = psycopg2.connect(
             dbname=os.getenv('DB_NAME'),
@@ -28,7 +40,7 @@ def get_db_connection():
         raise Exception(f"Failed to connect to database: {str(e)}")
 
 def get_encryption_key():
-    """Get the encryption key from environment variables."""
+    """Récupère la clé de chiffrement depuis les variables d'environnement."""
     key = os.getenv('ENCRYPTION_KEY')
     if not key:
         raise ValueError("ENCRYPTION_KEY environment variable not set")
@@ -41,14 +53,24 @@ def get_encryption_key():
     return key
 
 def encrypt_secret(secret):
-    """Encrypt the TOTP secret before storing it."""
+    """Chiffre le secret TOTP avant de le stocker.
+
+    Args:
+        secret (str): Le secret TOTP à chiffrer.
+
+    Returns:
+        str: Le secret chiffré, encodé en base64.
+
+    Raises:
+        ValueError: Si la clé de chiffrement n'est pas définie.
+    """
     key = get_encryption_key()
     f = Fernet(key)
     encrypted = f.encrypt(secret.encode('utf-8'))
     return encrypted.decode('utf-8')
 
 def create_qr_code(data):
-    """Create a QR code and return it as a base64 encoded string."""
+    """Crée un QR code et le retourne sous forme de chaîne encodée en base64."""
     qr = qrcode.QRCode(
         version=1,
         error_correction=qrcode.constants.ERROR_CORRECT_L,
@@ -66,6 +88,32 @@ def create_qr_code(data):
     return base64.b64encode(buffered.getvalue()).decode('utf-8')
 
 def handle(event, context):
+    """Point d'entrée principal pour la fonction de génération de 2FA.
+
+    Ce gestionnaire traite les requêtes pour générer un secret 2FA (TOTP) pour un utilisateur.
+    Il attend un corps JSON contenant 'username'.
+
+    Le processus comprend :
+    1. Analyse de la requête entrante pour obtenir le nom d'utilisateur.
+    2. Génération d'un nouveau secret TOTP aléatoire.
+    3. Chiffrement du secret.
+    4. Création d'un URI de provisioning TOTP pour le QR code (incluant le nom d'utilisateur et l'émetteur).
+    5. Génération d'une image QR code à partir de l'URI et encodage en base64.
+    6. Connexion à la base de données.
+    7. Vérification de l'existence de l'utilisateur.
+    8. Mise à jour de l'enregistrement de l'utilisateur avec le nouveau secret MFA chiffré.
+    9. Renvoi d'une réponse HTTP avec le statut, un message, le secret brut (pour démo)
+       et le QR code encodé en base64.
+
+    Args:
+        event: L'objet événement contenant les détails de la requête (par exemple, corps, en-têtes).
+               Le corps de la requête doit être un JSON avec le champ 'username'.
+        context: L'objet contexte d'exécution (non utilisé dans cette fonction).
+
+    Returns:
+        dict: Un dictionnaire représentant la réponse HTTP, contenant 'statusCode' et 'body'.
+              Le corps est une chaîne JSON avec les informations de configuration 2FA.
+    """
     conn = None
     cursor = None
     try:
