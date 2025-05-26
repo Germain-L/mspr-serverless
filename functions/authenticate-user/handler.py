@@ -8,12 +8,14 @@ from cryptography.fernet import Fernet, InvalidToken
 from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
 
+# Load environment variables at module level
+load_dotenv()
+
 # Constants
 ACCOUNT_EXPIRY_DAYS = 180  # 6 months
 
 def get_db_connection():
     """Create and return a database connection."""
-    load_dotenv()
     try:
         conn = psycopg2.connect(
             dbname=os.getenv('DB_NAME'),

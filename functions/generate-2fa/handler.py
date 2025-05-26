@@ -10,9 +10,11 @@ from cryptography.fernet import Fernet
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 
+# Load environment variables at module level
+load_dotenv()
+
 def get_db_connection():
     """Create and return a database connection."""
-    load_dotenv()
     try:
         conn = psycopg2.connect(
             dbname=os.getenv('DB_NAME'),

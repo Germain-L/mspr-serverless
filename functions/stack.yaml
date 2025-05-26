@@ -12,11 +12,15 @@ functions:
     lang: python3-http
     handler: ./generate-2fa
     image: registry.germainleignel.com/library/generate-2fa:latest
+    environment:
+      ENCRYPTION_KEY: "bA8tcGhp8hZsSSqIEv1hGUvrfUuiyB8XMCICfSmrV3k="
 
   authenticate-user:
     lang: python3-http
     handler: ./authenticate-user
     image: registry.germainleignel.com/library/authenticate-user:latest
+    environment:
+      ENCRYPTION_KEY: "bA8tcGhp8hZsSSqIEv1hGUvrfUuiyB8XMCICfSmrV3k="
 
   check-user-status:
     lang: python3-http
