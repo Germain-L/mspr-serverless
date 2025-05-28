@@ -12,6 +12,26 @@ from psycopg2 import sql
 from cryptography.fernet import Fernet, InvalidToken
 from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
+from metrics import MetricsMiddleware, get_metrics
+import uvicorn
+from fastapi import FastAPI, Request
+from fastapi.responses import PlainTextResponse
+import threading
+
+# Create FastAPI app for metrics endpoint
+metrics_app = FastAPI()
+
+@metrics_app.get('/metrics', response_class=PlainTextResponse)
+async def metrics():
+    return get_metrics()
+
+# Start metrics server in a separate thread
+def start_metrics_server():
+    uvicorn.run(metrics_app, host='0.0.0.0', port=8081)
+
+# Start metrics server in background
+metrics_thread = threading.Thread(target=start_metrics_server, daemon=True)
+metrics_thread.start()
 
 # Load environment variables at module level
 load_dotenv()
@@ -125,6 +145,7 @@ def is_account_expired(gendate_timestamp):
     expiry_date = creation_date + timedelta(days=ACCOUNT_EXPIRY_DAYS)
     return datetime.now(timezone.utc) > expiry_date
 
+@MetricsMiddleware(function_name='authenticate-user')
 def handle(event, context):
     """Point d'entrée principal pour la fonction d'authentification OpenFaaS.
 
