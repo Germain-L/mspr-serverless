@@ -13,26 +13,33 @@ RUN pnpm install --frozen-lockfile
 # Copy source files
 COPY . .
 
+
 # Build the app
 RUN pnpm run build
 
 # Production stage
-FROM nginx:stable-alpine
+FROM node:20-alpine
 
-# Remove default nginx static assets
-RUN rm -rf /usr/share/nginx/html/*
+WORKDIR /app
 
-# Copy the built app from build stage
-COPY --from=build /app/build /usr/share/nginx/html
+# Install production dependencies only
+COPY package.json pnpm-lock.yaml* ./
+RUN corepack enable && corepack prepare pnpm@latest --activate \
+    && pnpm install --frozen-lockfile --production \
+    && pnpm add @sveltejs/adapter-node
 
-# Copy custom nginx config
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copy built app and node_modules from build stage
+COPY --from=build /app/build ./build
+COPY --from=build /app/node_modules ./node_modules
 
-# Ensure nginx can read the files
-RUN chmod -R 755 /usr/share/nginx/html
+# Copy static files
+COPY static ./static
 
-# Expose port 80
-EXPOSE 80
+# Set environment to production
+ENV NODE_ENV=production
 
-# Start Nginx
-CMD ["nginx", "-g", "daemon off;"]
+# Expose port 3000
+EXPOSE 3000
+
+# Start the application
+CMD ["node", "build"]

@@ -20,23 +20,39 @@ spec:
         image: registry.germainleignel.com/library/frontend:latest
         imagePullPolicy: Always
         ports:
-        - containerPort: 80
+        - containerPort: 3000
+          name: http
+        env:
+        - name: NODE_ENV
+          value: production
         resources:
           limits:
-            cpu: "0.5"
-            memory: "256Mi"
+            cpu: "1"
+            memory: "512Mi"
           requests:
-            cpu: "0.1"
-            memory: "128Mi"
+            cpu: "0.2"
+            memory: "256Mi"
         livenessProbe:
           httpGet:
-            path: /health
-            port: 80
-          initialDelaySeconds: 10
+            path: /
+            port: http
+          initialDelaySeconds: 30
           periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
         readinessProbe:
           httpGet:
-            path: /health
-            port: 80
+            path: /
+            port: http
           initialDelaySeconds: 5
           periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        startupProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3

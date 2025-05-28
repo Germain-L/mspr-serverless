@@ -1,14 +1,13 @@
-import adapter from '@sveltejs/adapter-static';
+import adapter from '@sveltejs/adapter-node';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
 const config = {
 	preprocess: vitePreprocess(),
 	kit: { 
 		adapter: adapter({
-			fallback: 'index.html', // Single-page app fallback for all routes
-			pages: 'build',
-			assets: 'build',
-			precompress: true
+			out: 'build',
+			precompress: true,
+			polyfill: true
 		}),
 		appDir: 'app',
 		paths: {
