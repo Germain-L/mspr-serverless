@@ -1,0 +1,39 @@
+{{- if .Values.adminer.enabled }}
+# adminer
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: adminer
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: adminer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: adminer
+  template:
+    metadata:
+      labels:
+        app: adminer
+    spec:
+      containers:
+        - name: adminer
+          image: "{{ .Values.adminer.image.repository }}:{{ .Values.adminer.image.tag }}"
+          imagePullPolicy: {{ .Values.adminer.image.pullPolicy }}
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ADMINER_DEFAULT_SERVER
+              value: postgres
+            - name: ADMINER_DEFAULT_PORT
+              value: "5432"
+            - name: ADMINER_DEFAULT_USER
+              value: postgres
+            - name: ADMINER_DEFAULT_PASSWORD
+              value: password
+            - name: ADMINER_DEFAULT_DB
+              value: postgres
+          resources:
+            {{- toYaml .Values.adminer.resources | nindent 12 }}
+{{- end }}

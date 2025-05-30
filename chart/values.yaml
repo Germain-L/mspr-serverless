@@ -1,0 +1,121 @@
+# Default values for mspr-serverless.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Global settings
+namespace: cofrap
+
+# PostgreSQL configuration
+postgresql:
+  enabled: true
+  image:
+    repository: postgres
+    tag: 17-alpine
+    pullPolicy: IfNotPresent
+  auth:
+    database: cofrap
+    username: postgres
+    password: password
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClass: longhorn
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+
+# Frontend configuration
+frontend:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: registry.germainleignel.com/library/frontend
+    tag: latest
+    pullPolicy: Always
+  containerPort: 3000
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 3000
+  ingress:
+    enabled: true
+    className: traefik
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+      traefik.ingress.kubernetes.io/router.tls: "true"
+    hosts:
+      - host: cofrap.germainleignel.com
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - hosts:
+          - cofrap.germainleignel.com
+        secretName: frontend-tls
+  resources:
+    requests:
+      cpu: "0.2"
+      memory: "256Mi"
+    limits:
+      cpu: "1"
+      memory: "512Mi"
+  livenessProbe:
+    enabled: true
+    path: /
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+
+# Adminer configuration
+adminer:
+  enabled: true
+  image:
+    repository: adminer
+    tag: 4.8.1
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8080
+  env:
+    - name: ADMINER_DEFAULT_SERVER
+      value: "{{ .Release.Name }}-postgresql"
+    - name: ADMINER_DEFAULT_PORT
+      value: "5432"
+    - name: ADMINER_DEFAULT_USER
+      value: postgres
+    - name: ADMINER_DEFAULT_PASSWORD
+      value: password
+    - name: ADMINER_DEFAULT_DB
+      value: postgres
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+
+# Database migrations
+migrations:
+  enabled: true
+  image:
+    repository: postgres
+    tag: 17-alpine
+    pullPolicy: IfNotPresent
+  restartPolicy: Never
+  backoffLimit: 3
+  migrations:
+    - name: 001_initial_schema.up.sql
+      content: |
+        CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            username VARCHAR(255) UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            mfa TEXT,
+            gendate BIGINT NOT NULL,
+            expired BOOLEAN DEFAULT FALSE
+        );

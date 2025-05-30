@@ -1,0 +1,17 @@
+{{- if .Values.adminer.enabled }}
+# service for adminer
+apiVersion: v1
+kind: Service
+metadata:
+  name: adminer
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: adminer
+spec:
+  selector:
+    app: adminer
+  ports:
+    - protocol: TCP
+      port: {{ .Values.adminer.service.port }}
+      targetPort: 8080
+{{- end }}
