@@ -1,5 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
+  import SecureInput from './SecureInput.svelte';
+  import LoadingButton from './LoadingButton.svelte';
   
   export let isLoading = false;
   
@@ -17,39 +19,83 @@
       errors.username = 'Username is required';
     } else if (username.length < 3) {
       errors.username = 'Username must be at least 3 characters';
+    } else if (username.length > 50) {
+      errors.username = 'Username must be less than 50 characters';
+    } else if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+      errors.username = 'Username can only contain letters, numbers, hyphens, and underscores';
     }
     
     return Object.keys(errors).length === 0;
   }
   
   function handleSubmit() {
-    if (validateForm()) {
+    if (validateForm() && !isLoading) {
       dispatch('submit', { username });
     }
   }
 </script>
 
-<form on:submit|preventDefault={handleSubmit} class="max-w-md mx-auto p-6 bg-white rounded-lg shadow-md">
-  <div class="mb-4">
-    <label for="username" class="block mb-2 font-medium text-gray-700">Username</label>
-    <input 
-      id="username" 
-      type="text" 
-      bind:value={username}
-      class={`w-full px-3 py-2 border rounded-md text-base ${errors.username ? 'border-red-500' : 'border-gray-300'}`}
-      disabled={isLoading}
-      placeholder="Enter your username"
-    />
-    {#if errors.username}
-      <span class="block text-red-500 text-sm mt-1">{errors.username}</span>
-    {/if}
+<div class="max-w-md mx-auto">
+  <div class="card p-8">
+    <!-- Header -->
+    <div class="text-center mb-8">
+      <div class="card-icon mx-auto bg-gradient-to-br from-blue-500 to-blue-600 mb-4">
+        <i class="fas fa-user-plus text-white"></i>
+      </div>
+      <h2 class="text-2xl font-bold text-slate-900 mb-2">Create Your Account</h2>
+      <p class="text-slate-600">
+        Join COFRAP for secure, enterprise-grade authentication
+      </p>
+    </div>
+    
+    <!-- Form -->
+    <form on:submit|preventDefault={handleSubmit} class="space-y-6">
+      <SecureInput
+        id="username"
+        type="text"
+        label="Username"
+        bind:value={username}
+        error={errors.username}
+        placeholder="Enter your username"
+        disabled={isLoading}
+        required={true}
+        icon="fas fa-user"
+        autocomplete="username"
+      />
+      
+      <!-- Security Notice -->
+      <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div class="flex items-start">
+          <i class="fas fa-info-circle text-blue-500 mt-0.5 mr-3 flex-shrink-0"></i>
+          <div class="text-sm text-blue-700">
+            <p class="font-medium mb-1">Security First</p>
+            <p>Your password and 2FA will be automatically generated after account creation for maximum security.</p>
+          </div>
+        </div>
+      </div>
+      
+      <LoadingButton
+        type="submit"
+        variant="primary"
+        size="lg"
+        fullWidth={true}
+        loading={isLoading}
+        loadingText="Creating Account..."
+        disabled={!username || isLoading}
+      >
+        <i class="fas fa-shield-alt mr-2"></i>
+        Create Secure Account
+      </LoadingButton>
+    </form>
+    
+    <!-- Footer -->
+    <div class="mt-6 text-center">
+      <p class="text-sm text-slate-600">
+        Already have an account?
+        <a href="/login" class="text-blue-600 hover:text-blue-700 font-medium">
+          Sign in here
+        </a>
+      </p>
+    </div>
   </div>
-  
-  <button 
-    type="submit" 
-    disabled={isLoading}
-    class="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-md transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
-  >
-    {isLoading ? 'Creating Account...' : 'Create Account'}
-  </button>
-</form>
+</div>
