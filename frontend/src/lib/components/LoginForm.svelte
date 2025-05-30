@@ -39,114 +39,55 @@
   }
 </script>
 
-<form on:submit|preventDefault={handleSubmit} class="login-form">
-  <div class="form-group">
-    <label for="username">Username</label>
+<form on:submit|preventDefault={handleSubmit} class="max-w-md mx-auto p-6 bg-white rounded-lg shadow-md">
+  <div class="mb-4">
+    <label for="username" class="block mb-2 font-medium text-gray-700">Username</label>
     <input 
       id="username" 
       type="text" 
       bind:value={username}
-      class:error={errors.username}
+      class={`w-full px-3 py-2 border rounded-md text-base ${errors.username ? 'border-red-500' : 'border-gray-300'}`}
       disabled={isLoading}
     />
     {#if errors.username}
-      <span class="error-message">{errors.username}</span>
+      <span class="block text-red-500 text-sm mt-1">{errors.username}</span>
     {/if}
   </div>
   
-  <div class="form-group">
-    <label for="password">Password</label>
+  <div class="mb-4">
+    <label for="password" class="block mb-2 font-medium text-gray-700">Password</label>
     <input 
       id="password" 
       type="password" 
       bind:value={password}
-      class:error={errors.password}
+      class={`w-full px-3 py-2 border rounded-md text-base ${errors.password ? 'border-red-500' : 'border-gray-300'}`}
       disabled={isLoading}
     />
     {#if errors.password}
-      <span class="error-message">{errors.password}</span>
+      <span class="block text-red-500 text-sm mt-1">{errors.password}</span>
     {/if}
   </div>
   
-  <div class="form-group">
-    <label for="tfaCode">Two-Factor Authentication Code</label>
+  <div class="mb-6">
+    <label for="tfaCode" class="block mb-2 font-medium text-gray-700">Two-Factor Authentication Code</label>
     <input 
       id="tfaCode" 
       type="text" 
       bind:value={tfaCode}
       placeholder="6-digit code"
-      class:error={errors.tfaCode}
+      class={`w-full px-3 py-2 border rounded-md text-base ${errors.tfaCode ? 'border-red-500' : 'border-gray-300'}`}
       disabled={isLoading}
     />
     {#if errors.tfaCode}
-      <span class="error-message">{errors.tfaCode}</span>
+      <span class="block text-red-500 text-sm mt-1">{errors.tfaCode}</span>
     {/if}
   </div>
   
-  <button type="submit" disabled={isLoading}>
+  <button 
+    type="submit" 
+    disabled={isLoading}
+    class="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-md transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+  >
     {isLoading ? 'Logging in...' : 'Login'}
   </button>
 </form>
-
-<style>
-  .login-form {
-    max-width: 400px;
-    margin: 0 auto;
-    padding: 1.5rem;
-    background-color: white;
-    border-radius: 0.5rem;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  }
-  
-  .form-group {
-    margin-bottom: 1rem;
-  }
-  
-  label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 500;
-    color: #4a5568;
-  }
-  
-  input {
-    width: 100%;
-    padding: 0.5rem;
-    border: 1px solid #e2e8f0;
-    border-radius: 0.25rem;
-    font-size: 1rem;
-  }
-  
-  input.error {
-    border-color: #e53e3e;
-  }
-  
-  .error-message {
-    display: block;
-    color: #e53e3e;
-    font-size: 0.875rem;
-    margin-top: 0.25rem;
-  }
-  
-  button {
-    width: 100%;
-    padding: 0.75rem;
-    background-color: #4299e1;
-    color: white;
-    border: none;
-    border-radius: 0.25rem;
-    font-size: 1rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background-color 0.2s;
-  }
-  
-  button:hover:not(:disabled) {
-    background-color: #3182ce;
-  }
-  
-  button:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
-  }
-</style>

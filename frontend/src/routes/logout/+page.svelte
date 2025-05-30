@@ -12,13 +12,6 @@
   });
 </script>
 
-<div class="logout-message">
+<div class="text-center py-8">
   <p>Logging you out...</p>
 </div>
-
-<style>
-  .logout-message {
-    text-align: center;
-    padding: 2rem;
-  }
-</style>

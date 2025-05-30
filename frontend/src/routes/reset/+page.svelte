@@ -55,50 +55,51 @@
   }
 </script>
 
-<div class="reset-container">
+<div class="max-w-lg mx-auto px-4 py-8">
   {#if step === 'info'}
-    <h1>Reset Your Credentials</h1>
+    <h1 class="text-center text-3xl font-semibold mb-6 text-slate-800">Reset Your Credentials</h1>
     
-    <div class="info-box">
-      <p>Your credentials have expired or need to be reset. This process will:</p>
-      <ul>
-        <li>Generate a new secure password for your account</li>
-        <li>Create a new two-factor authentication secret</li>
-        <li>Reset your account status to active</li>
+    <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6 rounded">
+      <p class="text-blue-900 mt-0">Your credentials have expired or need to be reset. This process will:</p>
+      <ul class="mb-0 pl-6">
+        <li class="mb-2 text-blue-800">Generate a new secure password for your account</li>
+        <li class="mb-2 text-blue-800">Create a new two-factor authentication secret</li>
+        <li class="text-blue-800">Reset your account status to active</li>
       </ul>
     </div>
     
     {#if error}
-      <div class="error-alert">
+      <div class="bg-red-100 text-red-800 p-3 mb-4 rounded border border-red-200">
         {error}
       </div>
     {/if}
     
-    <div class="form-group">
-      <label for="username">Username</label>
+    <div class="mb-6">
+      <label for="username" class="block mb-2 font-medium text-gray-700">Username</label>
       <input 
         type="text" 
         id="username" 
         bind:value={username} 
         placeholder="Enter your username"
+        class="w-full px-3 py-3 border border-gray-300 rounded-md text-base"
         disabled={$isLoading}
       />
     </div>
     
     <button 
-      class="btn btn-primary" 
+      class="w-full py-3 mt-4 bg-blue-500 hover:bg-blue-600 disabled:opacity-70 disabled:cursor-not-allowed text-white font-medium rounded transition-colors"
       on:click={startReset} 
       disabled={$isLoading || !username}
     >
       {$isLoading ? 'Processing...' : 'Reset Credentials'}
     </button>
   {:else if step === 'password' && passwordData}
-    <h1>Save Your New Password</h1>
+    <h1 class="text-center text-3xl font-semibold mb-6 text-slate-800">Save Your New Password</h1>
     
-    <div class="step-info">
-      <p>Scan this QR code to get your new password. You will need it to log in.</p>
-      <p><strong>Your new password:</strong> {passwordData.password}</p>
-      <p class="warning">Important: For security reasons, this password will only be shown once!</p>
+    <div class="mb-6 text-center">
+      <p class="mb-2">Scan this QR code to get your new password. You will need it to log in.</p>
+      <p class="mb-2"><strong>Your new password:</strong> {passwordData.password}</p>
+      <p class="text-red-600 font-medium">Important: For security reasons, this password will only be shown once!</p>
     </div>
     
     <QRCodeDisplay 
@@ -107,15 +108,18 @@
       instructions="Save this password in a secure password manager."
     />
     
-    <button class="btn btn-primary" on:click={proceedToTwoFactor}>
+    <button 
+      class="w-full py-3 mt-6 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded transition-colors"
+      on:click={proceedToTwoFactor}
+    >
       I've saved my password, continue
     </button>
   {:else if step === 'twoFactor' && tfaData}
-    <h1>Setup New Two-Factor Authentication</h1>
+    <h1 class="text-center text-3xl font-semibold mb-6 text-slate-800">Setup New Two-Factor Authentication</h1>
     
-    <div class="step-info">
-      <p>Scan this QR code with an authenticator app (like Google Authenticator, Authy, or Microsoft Authenticator).</p>
-      <p class="warning">Important: This will replace your previous 2FA setup!</p>
+    <div class="mb-6 text-center">
+      <p class="mb-2">Scan this QR code with an authenticator app (like Google Authenticator, Authy, or Microsoft Authenticator).</p>
+      <p class="text-red-600 font-medium">Important: This will replace your previous 2FA setup!</p>
     </div>
     
     <QRCodeDisplay 
@@ -124,111 +128,11 @@
       instructions="Scan with your authenticator app to receive 6-digit codes"
     />
     
-    <button class="btn btn-primary" on:click={proceedToLogin}>
+    <button 
+      class="w-full py-3 mt-6 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded transition-colors" 
+      on:click={proceedToLogin}
+    >
       I've set up the new 2FA, proceed to login
     </button>
   {/if}
 </div>
-
-<style>
-  .reset-container {
-    max-width: 500px;
-    margin: 0 auto;
-    padding: 2rem 1rem;
-  }
-  
-  h1 {
-    text-align: center;
-    margin-bottom: 1.5rem;
-    color: #2c3e50;
-  }
-  
-  .info-box {
-    background-color: #e1f5fe;
-    border-left: 4px solid #03a9f4;
-    padding: 1rem;
-    margin-bottom: 1.5rem;
-    border-radius: 0.25rem;
-  }
-  
-  .info-box p {
-    margin-top: 0;
-    color: #01579b;
-  }
-  
-  .info-box ul {
-    margin-bottom: 0;
-    padding-left: 1.5rem;
-  }
-  
-  .info-box li {
-    margin-bottom: 0.5rem;
-    color: #0277bd;
-  }
-  
-  .form-group {
-    margin-bottom: 1.5rem;
-  }
-  
-  label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 500;
-    color: #4a5568;
-  }
-  
-  input {
-    width: 100%;
-    padding: 0.75rem;
-    border: 1px solid #e2e8f0;
-    border-radius: 0.25rem;
-    font-size: 1rem;
-  }
-  
-  .error-alert {
-    background-color: #f8d7da;
-    color: #721c24;
-    padding: 0.75rem 1rem;
-    margin-bottom: 1rem;
-    border-radius: 0.25rem;
-    border: 1px solid #f5c6cb;
-  }
-  
-  .step-info {
-    margin-bottom: 1.5rem;
-    text-align: center;
-  }
-  
-  .warning {
-    color: #e74c3c;
-    font-weight: 500;
-  }
-  
-  .btn {
-    display: block;
-    width: 100%;
-    padding: 0.75rem 1.5rem;
-    margin-top: 1rem;
-    border: none;
-    border-radius: 0.25rem;
-    font-size: 1rem;
-    font-weight: 500;
-    text-align: center;
-    cursor: pointer;
-    transition: background-color 0.2s;
-  }
-  
-  .btn:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
-  }
-  
-  .btn-primary {
-    background-color: #3498db;
-    color: white;
-  }
-  
-  .btn-primary:hover:not(:disabled) {
-    background-color: #2980b9;
-  }
-</style>

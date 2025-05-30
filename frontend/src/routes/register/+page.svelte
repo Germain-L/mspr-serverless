@@ -41,12 +41,12 @@
   }
 </script>
 
-<div class="registration-container">
+<div class="max-w-lg mx-auto px-4 py-8">
   {#if step === 'form'}
-    <h1>Create a New Account</h1>
+    <h1 class="text-center text-3xl font-semibold mb-6 text-slate-800">Create a New Account</h1>
     
     {#if error}
-      <div class="error-alert">
+      <div class="bg-red-100 text-red-800 p-3 mb-4 rounded border border-red-200">
         {error}
       </div>
     {/if}
@@ -56,16 +56,16 @@
       isLoading={$isLoading}
     />
     
-    <div class="auth-links">
-      <p>Already have an account? <a href="/login">Login</a></p>
+    <div class="mt-6 text-center">
+      <p>Already have an account? <a href="/login" class="text-blue-500 hover:underline">Login</a></p>
     </div>
   {:else if step === 'password' && passwordData}
-    <h1>Save Your Password</h1>
+    <h1 class="text-center text-3xl font-semibold mb-6 text-slate-800">Save Your Password</h1>
     
-    <div class="step-info">
-      <p>Scan this QR code to get your password. You will need it to log in.</p>
-      <p><strong>Your password:</strong> {passwordData.password}</p>
-      <p class="warning">Important: For security reasons, this password will only be shown once!</p>
+    <div class="mb-6 text-center">
+      <p class="mb-2">Scan this QR code to get your password. You will need it to log in.</p>
+      <p class="mb-2"><strong>Your password:</strong> {passwordData.password}</p>
+      <p class="text-red-600 font-medium">Important: For security reasons, this password will only be shown once!</p>
     </div>
     
     <QRCodeDisplay 
@@ -74,15 +74,18 @@
       instructions="Save this password in a secure password manager."
     />
     
-    <button class="btn btn-primary" on:click={proceedToTwoFactor}>
+    <button 
+      class="w-full py-3 mt-6 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded transition-colors" 
+      on:click={proceedToTwoFactor}
+    >
       I've saved my password, continue
     </button>
   {:else if step === 'twoFactor' && tfaData}
-    <h1>Setup Two-Factor Authentication</h1>
+    <h1 class="text-center text-3xl font-semibold mb-6 text-slate-800">Setup Two-Factor Authentication</h1>
     
-    <div class="step-info">
-      <p>Scan this QR code with an authenticator app (like Google Authenticator, Authy, or Microsoft Authenticator).</p>
-      <p class="warning">Important: You will need this for every login!</p>
+    <div class="mb-6 text-center">
+      <p class="mb-2">Scan this QR code with an authenticator app (like Google Authenticator, Authy, or Microsoft Authenticator).</p>
+      <p class="text-red-600 font-medium">Important: You will need this for every login!</p>
     </div>
     
     <QRCodeDisplay 
@@ -91,78 +94,11 @@
       instructions="Scan with your authenticator app to receive 6-digit codes"
     />
     
-    <button class="btn btn-primary" on:click={proceedToLogin}>
+    <button 
+      class="w-full py-3 mt-6 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded transition-colors" 
+      on:click={proceedToLogin}
+    >
       I've set up 2FA, proceed to login
     </button>
   {/if}
 </div>
-
-<style>
-  .registration-container {
-    max-width: 500px;
-    margin: 0 auto;
-    padding: 2rem 1rem;
-  }
-  
-  h1 {
-    text-align: center;
-    margin-bottom: 1.5rem;
-    color: #2c3e50;
-  }
-  
-  .error-alert {
-    background-color: #f8d7da;
-    color: #721c24;
-    padding: 0.75rem 1rem;
-    margin-bottom: 1rem;
-    border-radius: 0.25rem;
-    border: 1px solid #f5c6cb;
-  }
-  
-  .auth-links {
-    margin-top: 1.5rem;
-    text-align: center;
-  }
-  
-  .auth-links a {
-    color: #3498db;
-    text-decoration: none;
-  }
-  
-  .auth-links a:hover {
-    text-decoration: underline;
-  }
-  
-  .step-info {
-    margin-bottom: 1.5rem;
-    text-align: center;
-  }
-  
-  .warning {
-    color: #e74c3c;
-    font-weight: 500;
-  }
-  
-  .btn {
-    display: block;
-    width: 100%;
-    padding: 0.75rem 1.5rem;
-    margin: 1.5rem 0 0;
-    border: none;
-    border-radius: 0.25rem;
-    font-size: 1rem;
-    font-weight: 500;
-    text-align: center;
-    cursor: pointer;
-    transition: background-color 0.2s;
-  }
-  
-  .btn-primary {
-    background-color: #3498db;
-    color: white;
-  }
-  
-  .btn-primary:hover {
-    background-color: #2980b9;
-  }
-</style>

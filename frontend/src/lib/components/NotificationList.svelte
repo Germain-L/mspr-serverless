@@ -3,7 +3,7 @@
   import Notification from './Notification.svelte';
 </script>
 
-<div class="notification-container">
+<div class="fixed top-4 right-4 flex flex-col gap-2 z-50">
   {#each $notifications as notification (notification.id)}
     <Notification
       type={notification.type}
@@ -14,15 +14,3 @@
     />
   {/each}
 </div>
-
-<style>
-  .notification-container {
-    position: fixed;
-    top: 1rem;
-    right: 1rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    z-index: 1000;
-  }
-</style>

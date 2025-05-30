@@ -39,11 +39,11 @@
   }
 </script>
 
-<div class="login-container">
-  <h1>Login to Your Account</h1>
+<div class="max-w-lg mx-auto px-4 py-8">
+  <h1 class="text-center text-3xl font-semibold mb-8 text-slate-800">Login to Your Account</h1>
   
   {#if error}
-    <div class="error-alert">
+    <div class="bg-red-100 text-red-800 p-3 mb-4 rounded border border-red-200">
       {error}
     </div>
   {/if}
@@ -53,44 +53,8 @@
     isLoading={$isLoading} 
   />
   
-  <div class="auth-links">
-    <p>Don't have an account? <a href="/register">Create one</a></p>
+  <div class="mt-6 text-center">
+    <p>Don't have an account? <a href="/register" class="text-blue-500 hover:underline">Create one</a></p>
   </div>
 </div>
 
-<style>
-  .login-container {
-    max-width: 500px;
-    margin: 0 auto;
-    padding: 2rem 1rem;
-  }
-  
-  h1 {
-    text-align: center;
-    margin-bottom: 2rem;
-    color: #2c3e50;
-  }
-  
-  .error-alert {
-    background-color: #f8d7da;
-    color: #721c24;
-    padding: 0.75rem 1rem;
-    margin-bottom: 1rem;
-    border-radius: 0.25rem;
-    border: 1px solid #f5c6cb;
-  }
-  
-  .auth-links {
-    margin-top: 1.5rem;
-    text-align: center;
-  }
-  
-  .auth-links a {
-    color: #3498db;
-    text-decoration: none;
-  }
-  
-  .auth-links a:hover {
-    text-decoration: underline;
-  }
-</style>
