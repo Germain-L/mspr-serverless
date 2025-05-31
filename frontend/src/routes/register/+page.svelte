@@ -1,263 +1,189 @@
 <script lang="ts">
+  import { page } from '$app/stores';
   import { goto } from '$app/navigation';
-  import { isLoading } from '$lib/stores/auth';
-  import { passwordService, twoFactorService } from '$lib/services/api';
-  import { notifications } from '$lib/stores/notification';
-  import RegistrationForm from '$lib/components/RegistrationForm.svelte';
-  import QRCodeDisplay from '$lib/components/QRCodeDisplay.svelte';
-  import StepIndicator from '$lib/components/StepIndicator.svelte';
-  
-  let step: 'form' | 'password' | 'twoFactor' = 'form';
-  let error: string | null = null;
-  let username = '';
-  let passwordData: { qr_code: string; password: string } | null = null;
-  let tfaData: { qr_code: string } | null = null;
-  
-  const steps = [
-    { id: 'form', title: 'Account Details', icon: 'fas fa-user' },
-    { id: 'password', title: 'Secure Password', icon: 'fas fa-key' },
-    { id: 'twoFactor', title: 'Two-Factor Auth', icon: 'fas fa-shield-alt' }
-  ];
-  
-  $: currentStepId = steps[steps.findIndex(s => s.id === step)]?.id || 'form';
-  
-  async function handleRegistration({ detail }: CustomEvent<{ username: string }>) {
-    error = null;
-    isLoading.set(true);
-    username = detail.username;
-    
+  import Button from '$lib/components/ui/Button.svelte';
+  import Input from '$lib/components/ui/Input.svelte';
+  import Alert from '$lib/components/ui/Alert.svelte';
+  import QRCodeDisplay from '$lib/components/ui/QRCodeDisplay.svelte';
+  import { AuthAPI } from '$lib/utils/api';
+  import { handleApiError, isValidUsername } from '$lib/utils/error-handler';
+
+  let username = $state($page.url.searchParams.get('username') || '');
+  let loading = $state(false);
+  let error = $state('');
+  let success = $state(false);
+  let generatedPassword = $state('');
+  let qrCodeData = $state('');
+  let userId = $state<number | null>(null);
+
+  async function createUser() {
+    if (!username.trim()) {
+      error = 'Please enter a username';
+      return;
+    }
+
+    if (!isValidUsername(username)) {
+      error = 'Username must be at least 3 characters and contain only letters, numbers, hyphens, and underscores';
+      return;
+    }
+
+    loading = true;
+    error = '';
+
     try {
-      // Generate password
-      passwordData = await passwordService.generate(username);
-      step = 'password';
+      const response = await AuthAPI.createUser(username);
       
-      notifications.add(
-        'Account created! Please save your secure password.',
-        'success',
-        5000
-      );
-      
-      // Pre-fetch 2FA data
-      tfaData = await twoFactorService.generate(username);
+      if (response.error) {
+        error = handleApiError(response);
+        loading = false;
+        return;
+      }
+
+      if (response.status === 'success') {
+        success = true;
+        generatedPassword = response.password;
+        qrCodeData = response.qr_code;
+        userId = response.user_id;
+      } else {
+        error = 'Failed to create user account';
+      }
     } catch (err) {
-      error = err instanceof Error ? err.message : 'An error occurred during registration';
-      notifications.add(
-        error,
-        'error',
-        5000
-      );
+      error = handleApiError(err);
     } finally {
-      isLoading.set(false);
+      loading = false;
     }
   }
-  
-  function proceedToTwoFactor() {
-    if (tfaData) {
-      step = 'twoFactor';
-      notifications.add(
-        'Please set up two-factor authentication to secure your account.',
-        'info',
-        4000
-      );
-    }
+
+  function proceedTo2FA() {
+    goto(`/setup-2fa?username=${encodeURIComponent(username)}&userId=${userId}`);
   }
-  
-  function proceedToLogin() {
-    notifications.add(
-      'Account setup complete! You can now log in.',
-      'success',
-      4000
-    );
-    goto('/login');
+
+  function goToLogin() {
+    goto('/');
   }
 </script>
 
 <svelte:head>
-  <title>Register - COFRAP User Management</title>
-  <meta name="description" content="Create a secure COFRAP account with two-factor authentication">
+  <title>Create Account - COFRAP</title>
 </svelte:head>
 
-<div class="auth-page">
-  <div class="auth-container">
-    <!-- Header Section -->
-    <div class="auth-header">
-      <div class="auth-icon">
-        <i class="fas fa-user-plus" aria-hidden="true"></i>
-      </div>
-      <h1 class="auth-title">Create Account</h1>
-      <p class="auth-subtitle">Join COFRAP with enterprise-grade security</p>
+<div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-2xl w-full space-y-8">
+    <div>
+      <h2 class="mt-6 text-center text-3xl font-bold text-gray-900">
+        Create New Account
+      </h2>
+      <p class="mt-2 text-center text-sm text-gray-600">
+        Enter a username to create your COFRAP account
+      </p>
     </div>
-    
-    <!-- Step Indicator -->
-    <div class="step-indicator-container">
-      <StepIndicator 
-        {steps}
-        currentStep={currentStepId}
-      />
-    </div>
-    
-    <!-- Step Content -->
-    {#if step === 'form'}
-      <!-- Registration Form Step -->
-      <div class="step-content">
-        <div class="step-header">
-          <h2 class="step-title">
-            <i class="fas fa-user" aria-hidden="true"></i>
-            Account Details
-          </h2>
-          <p class="step-description">
-            Create your secure account username. We'll generate a strong password for you.
-          </p>
-        </div>
-        
-        <RegistrationForm 
-          on:submit={handleRegistration}
-          isLoading={$isLoading}
-        />
-        
-        <div class="auth-footer">
-          <div class="auth-links">
-            <p class="auth-link-text">
-              Already have an account? 
-              <a href="/login" class="auth-link">
-                Sign in here
-                <i class="fas fa-arrow-right" aria-hidden="true"></i>
-              </a>
-            </p>
-          </div>
-        </div>
-      </div>
-      
-    {:else if step === 'password' && passwordData}
-      <!-- Password Generation Step -->
-      <div class="step-content">
-        <div class="step-header">
-          <h2 class="step-title">
-            <i class="fas fa-key" aria-hidden="true"></i>
-            Secure Password Generated
-          </h2>
-          <p class="step-description">
-            Your cryptographically secure password has been generated. Save it now - it won't be shown again.
-          </p>
-        </div>
-        
-        <!-- Security Alert -->
-        <div class="alert alert-warning">
-          <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
-          <div>
-            <strong>Important:</strong> This password will only be displayed once for security reasons. 
-            Please save it in a secure password manager immediately.
-          </div>
-        </div>
-        
-        <!-- Password Display -->
-        <div class="password-display">
-          <div class="password-info">
-            <h3 class="password-label">Your Generated Password</h3>
-            <div class="password-value">
-              <code class="password-code">{passwordData.password}</code>
-              <button 
-                class="copy-button"
-                onclick={() => passwordData && navigator.clipboard.writeText(passwordData.password)}
-                title="Copy password"
-                aria-label="Copy password to clipboard"
-              >
-                <i class="fas fa-copy" aria-hidden="true"></i>
-              </button>
-            </div>
-          </div>
-        </div>
-        
-        <QRCodeDisplay 
-          qrCodeData={passwordData.qr_code}
-          title="Password QR Code"
-          instructions="Scan this QR code to save your password securely"
-        />
-        
-        <div class="step-actions">
-          <button 
-            class="btn btn-security btn-lg btn-full"
-            onclick={proceedToTwoFactor}
+
+    {#if !success}
+      <form class="mt-8 space-y-6" onsubmit={(e) => e.preventDefault()}>
+        {#if error}
+          <Alert type="error" message={error} dismissible onDismiss={() => error = ''} />
+        {/if}
+
+        <div class="space-y-4">
+          <Input
+            id="username"
+            name="username"
+            type="text"
+            placeholder="Choose a username"
+            label="Username"
+            bind:value={username}
+            required
+            disabled={loading}
+            autocomplete="username"
+          />
+
+          <Button 
+            type="button"
+            variant="primary"
+            onclick={createUser}
+            loading={loading}
+            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3"
           >
-            <i class="fas fa-check" aria-hidden="true"></i>
-            I've Saved My Password - Continue
-          </button>
-        </div>
-        
-        <!-- Security Tips -->
-        <div class="security-tips">
-          <h4 class="tips-title">
-            <i class="fas fa-lightbulb" aria-hidden="true"></i>
-            Security Tips
-          </h4>
-          <ul class="tips-list">
-            <li>Use a password manager like 1Password, Bitwarden, or LastPass</li>
-            <li>Never share your password with anyone</li>
-            <li>Store the QR code in a secure location</li>
-          </ul>
-        </div>
-      </div>
-      
-    {:else if step === 'twoFactor' && tfaData}
-      <!-- Two-Factor Authentication Step -->
-      <div class="step-content">
-        <div class="step-header">
-          <h2 class="step-title">
-            <i class="fas fa-shield-alt" aria-hidden="true"></i>
-            Two-Factor Authentication
-          </h2>
-          <p class="step-description">
-            Set up 2FA for an additional layer of security. You'll need this for every login.
-          </p>
-        </div>
-        
-        <!-- 2FA Instructions -->
-        <div class="tfa-instructions">
-          <h3 class="instructions-title">Setup Instructions</h3>
-          <ol class="instructions-list">
-            <li>Download an authenticator app (Google Authenticator, Authy, Microsoft Authenticator)</li>
-            <li>Open the app and tap "Add Account" or "+"</li>
-            <li>Scan the QR code below with your phone's camera</li>
-            <li>Your account will be added and start generating 6-digit codes</li>
-          </ol>
-        </div>
-        
-        <QRCodeDisplay 
-          qrCodeData={tfaData.qr_code}
-          title="Two-Factor Authentication"
-          instructions="Scan with your authenticator app to complete setup"
-        />
-        
-        <div class="step-actions">
-          <button 
-            class="btn btn-security btn-lg btn-full"
-            onclick={proceedToLogin}
+            Create Account
+          </Button>
+
+          <Button 
+            type="button"
+            variant="ghost"
+            onclick={goToLogin}
+            disabled={loading}
+            class="w-full"
           >
-            <i class="fas fa-check-circle" aria-hidden="true"></i>
-            Setup Complete - Sign In
-          </button>
+            Back to Login
+          </Button>
         </div>
-        
-        <!-- App Recommendations -->
-        <div class="app-recommendations">
-          <h4 class="recommendations-title">
-            <i class="fas fa-mobile-alt" aria-hidden="true"></i>
-            Recommended Apps
-          </h4>
-          <div class="app-grid">
-            <div class="app-item">
-              <i class="fab fa-google" aria-hidden="true"></i>
-              <span>Google Authenticator</span>
+      </form>
+    {:else}
+      <!-- Success State - Show Generated Password -->
+      <div class="space-y-6">
+        <Alert 
+          type="success" 
+          message="Account created successfully! Please save your password securely." 
+        />
+
+        <div class="bg-white p-6 rounded-lg shadow">
+          <h3 class="text-lg font-medium text-gray-900 mb-4">Your Account Details</h3>
+          
+          <div class="space-y-4">
+            <div>
+              <div class="block text-sm font-medium text-gray-700 mb-1">Username</div>
+              <p class="text-lg font-mono bg-gray-50 p-2 rounded border">{username}</p>
             </div>
-            <div class="app-item">
-              <i class="fas fa-shield-halved" aria-hidden="true"></i>
-              <span>Authy</span>
-            </div>
-            <div class="app-item">
-              <i class="fab fa-microsoft" aria-hidden="true"></i>
-              <span>Microsoft Authenticator</span>
+            
+            <div>
+              <div class="block text-sm font-medium text-gray-700 mb-1">Generated Password</div>
+              <p class="text-lg font-mono bg-gray-50 p-2 rounded border break-all">{generatedPassword}</p>
             </div>
           </div>
+        </div>
+
+        {#if qrCodeData}
+          <QRCodeDisplay 
+            qrCodeBase64={qrCodeData}
+            title="Save Your Password"
+            description="Scan this QR code to save your login credentials securely. You'll need both your username and password to sign in."
+          />
+        {/if}
+
+        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div class="flex">
+            <div class="flex-shrink-0">
+              <svg class="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <div class="ml-3">
+              <h3 class="text-sm font-medium text-yellow-800">Important Security Notice</h3>
+              <p class="mt-1 text-sm text-yellow-700">
+                Save your password securely! This is the only time it will be displayed. 
+                Consider setting up 2FA for additional security.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          <Button 
+            type="button"
+            onclick={proceedTo2FA}
+            class="w-full"
+          >
+            Setup 2FA (Recommended)
+          </Button>
+          
+          <Button 
+            type="button"
+            variant="secondary"
+            onclick={goToLogin}
+            class="w-full"
+          >
+            Skip and Go to Login
+          </Button>
         </div>
       </div>
     {/if}

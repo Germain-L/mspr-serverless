@@ -5,14 +5,11 @@ const config = {
 	preprocess: vitePreprocess(),
 	kit: { 
 		adapter: adapter({
-			out: 'build',
-			precompress: true,
-			polyfill: true
-		}),
-		appDir: 'app',
-		paths: {
-			base: ''
-		}
+			// Enable environment variables in server-side code
+			env: {
+				publicPrefix: 'PUBLIC_'
+			}
+		})
 	}
 };
 

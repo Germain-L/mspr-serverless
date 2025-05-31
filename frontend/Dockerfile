@@ -1,45 +1,60 @@
-# Build stage
-FROM node:20-alpine AS build
+# Multi-stage build for SvelteKit frontend with Node.js
+FROM node:20-alpine AS builder
 
+# Set working directory
 WORKDIR /app
 
 # Copy package files
-COPY package.json pnpm-lock.yaml* ./
+COPY package*.json ./
 
 # Install dependencies
-RUN corepack enable && corepack prepare pnpm@latest --activate
-RUN pnpm install --frozen-lockfile
+RUN npm ci --only=production=false
 
-# Copy source files
+# Copy source code
 COPY . .
 
-
-# Build the app
-RUN pnpm run build
+# Build the application
+RUN npm run build
 
 # Production stage
-FROM node:20-alpine
+FROM node:20-alpine AS production
 
+# Install dumb-init for proper signal handling
+RUN apk add --no-cache dumb-init
+
+# Create app directory and user
 WORKDIR /app
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S svelte -u 1001
 
-# Install production dependencies only
-COPY package.json pnpm-lock.yaml* ./
-RUN corepack enable && corepack prepare pnpm@latest --activate \
-    && pnpm install --frozen-lockfile --production \
-    && pnpm add @sveltejs/adapter-node
+# Copy package files
+COPY package*.json ./
 
-# Copy built app and node_modules from build stage
-COPY --from=build /app/build ./build
-COPY --from=build /app/node_modules ./node_modules
+# Install only production dependencies
+RUN npm ci --only=production && npm cache clean --force
 
-# Copy static files
-COPY static ./static
+# Copy built application from builder stage
+COPY --from=builder --chown=svelte:nodejs /app/build ./build
+COPY --from=builder --chown=svelte:nodejs /app/package.json ./
 
-# Set environment to production
-ENV NODE_ENV=production
+# Switch to non-root user
+USER svelte
 
-# Expose port 3000
+# Expose port
 EXPOSE 3000
 
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV HOST=0.0.0.0
+ENV OPENFAAS_GATEWAY_INTERNAL=http://gateway.openfaas.svc.cluster.local:8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node -e "http.get('http://localhost:3000', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })" || exit 1
+
+# Use dumb-init to handle signals properly
+ENTRYPOINT ["dumb-init", "--"]
+
 # Start the application
-CMD ["node", "build"]
+CMD ["node", "build/index.js"]
