@@ -20,7 +20,7 @@ import psycopg2
 from psycopg2 import sql
 from cryptography.fernet import Fernet, InvalidToken
 from dotenv import load_dotenv
-from shared_metrics import (
+from .shared_metrics import (
     track_request_metrics, track_db_operation, track_2fa_operation, 
     get_metrics, get_metrics_content_type
 )

@@ -12,7 +12,7 @@ from psycopg2 import sql
 from cryptography.fernet import Fernet, InvalidToken
 from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
-from shared_metrics import (
+from .shared_metrics import (
     track_request_metrics, track_db_operation, track_authentication, 
     track_2fa_operation, get_metrics, get_metrics_content_type
 )

@@ -9,7 +9,7 @@ import psycopg2
 from psycopg2 import sql
 from datetime import datetime, timezone
 from dotenv import load_dotenv
-from shared_metrics import (
+from .shared_metrics import (
     track_request_metrics, track_db_operation, get_metrics, get_metrics_content_type
 )
 
