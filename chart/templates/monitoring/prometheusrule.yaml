@@ -1,0 +1,126 @@
+{{- if and .Values.monitoring.enabled .Values.monitoring.prometheusRule.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "mspr-serverless.fullname" . }}-alerts
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "mspr-serverless.labels" . | nindent 4 }}
+spec:
+  groups:
+  - name: mspr-serverless.rules
+    rules:
+    # Frontend alerts
+    - alert: FrontendHighErrorRate
+      expr: |
+        (
+          rate(http_requests_total{job="mspr-serverless-frontend", status_code=~"5.."}[5m]) /
+          rate(http_requests_total{job="mspr-serverless-frontend"}[5m])
+        ) > 0.05
+      for: 2m
+      labels:
+        severity: warning
+        component: frontend
+      annotations:
+        summary: "High error rate on frontend"
+        description: "Frontend error rate is above threshold over the last 5 minutes"
+
+    - alert: FrontendHighLatency
+      expr: |
+        histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="mspr-serverless-frontend"}[5m])) > 1
+      for: 2m
+      labels:
+        severity: warning
+        component: frontend
+      annotations:
+        summary: "High latency on frontend"
+        description: "95th percentile latency is above 1s over the last 5 minutes"
+
+    # Authentication function alerts
+    - alert: AuthenticationHighErrorRate
+      expr: |
+        (
+          rate(function_requests_total{function_name="authenticate-user", status_code=~"5.."}[5m]) /
+          rate(function_requests_total{function_name="authenticate-user"}[5m])
+        ) > 0.05
+      for: 2m
+      labels:
+        severity: warning
+        component: authentication
+      annotations:
+        summary: "High error rate on authentication function"
+        description: "Authentication function error rate is above threshold over the last 5 minutes"
+
+    - alert: AuthenticationFailureSpike
+      expr: |
+        rate(function_authentication_attempts_total{function_name="authenticate-user", result="failure"}[5m]) > 10
+      for: 1m
+      labels:
+        severity: critical
+        component: authentication
+      annotations:
+        summary: "High authentication failure rate"
+        description: "Authentication failure rate is high over the last 5 minutes"
+
+    # Database alerts
+    - alert: DatabaseConnectionErrors
+      expr: |
+        rate(function_db_connection_errors_total[5m]) > 0.1
+      for: 1m
+      labels:
+        severity: critical
+        component: database
+      annotations:
+        summary: "Database connection errors detected"
+        description: "Database connection errors are occurring"
+
+    - alert: DatabaseOperationErrors
+      expr: |
+        (
+          rate(function_db_operations_total{status="error"}[5m]) /
+          rate(function_db_operations_total[5m])
+        ) > 0.1
+      for: 2m
+      labels:
+        severity: warning
+        component: database
+      annotations:
+        summary: "High database operation error rate"
+        description: "Database operation error rate is above threshold over the last 5 minutes"
+
+    # 2FA alerts
+    - alert: TwoFactorHighFailureRate
+      expr: |
+        (
+          rate(function_2fa_operations_total{status="failure"}[5m]) /
+          rate(function_2fa_operations_total[5m])
+        ) > 0.2
+      for: 2m
+      labels:
+        severity: warning
+        component: 2fa
+      annotations:
+        summary: "High 2FA failure rate"
+        description: "2FA operation failure rate is above threshold over the last 5 minutes"
+
+    # Function availability alerts
+    - alert: FunctionDown
+      expr: |
+        up{job=~".*function.*"} == 0
+      for: 1m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Function is down"
+        description: "A function has been down for more than 1 minute"
+
+    - alert: FunctionHighLatency
+      expr: |
+        histogram_quantile(0.95, rate(function_request_duration_seconds_bucket[5m])) > 5
+      for: 2m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High function latency"
+        description: "95th percentile latency for a function is above 1s threshold"
+{{- end }}

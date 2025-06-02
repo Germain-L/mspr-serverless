@@ -22,6 +22,9 @@ import psycopg2
 from psycopg2 import sql
 from datetime import datetime, timezone
 from dotenv import load_dotenv
+from shared_metrics import (
+    track_request_metrics, track_db_operation, get_metrics, get_metrics_content_type
+)
 
 def get_db_connection():
     """Crée et retourne une connexion à la base de données."""
@@ -68,6 +71,7 @@ def create_qr_code(data):
     img.save(buffered, format="PNG")
     return base64.b64encode(buffered.getvalue()).decode('utf-8')
 
+@track_request_metrics('generate-password')
 def handle(event, context):
     """Point d'entrée principal pour la fonction de génération de mot de passe et de création d'utilisateur.
 
@@ -96,6 +100,16 @@ def handle(event, context):
         dict: Un dictionnaire représentant la réponse HTTP, contenant 'statusCode' et 'body'.
               Le corps est une chaîne JSON avec les informations de l'utilisateur créé et son mot de passe.
     """
+    # Handle metrics endpoint
+    if hasattr(event, 'path') and event.path == '/metrics':
+        return {
+            "statusCode": 200,
+            "headers": {
+                "Content-Type": get_metrics_content_type()
+            },
+            "body": get_metrics().decode('utf-8')
+        }
+    
     conn = None
     cursor = None
     try:
@@ -125,25 +139,29 @@ def handle(event, context):
         gendate = int(datetime.now(timezone.utc).timestamp() * 1000)
         
         # Connect to database
-        conn = get_db_connection()
-        cursor = conn.cursor()
+        with track_db_operation('generate-password', 'connect'):
+            conn = get_db_connection()
+            cursor = conn.cursor()
         
         # Check if user already exists
-        cursor.execute("SELECT 1 FROM users WHERE username = %s", (username,))
-        if cursor.fetchone():
-            return {
-                "statusCode": 400,
-                "body": json.dumps({"error": "Username already exists"})
-            }
+        with track_db_operation('generate-password', 'check_user_exists'):
+            cursor.execute("SELECT 1 FROM users WHERE username = %s", (username,))
+            if cursor.fetchone():
+                return {
+                    "statusCode": 400,
+                    "body": json.dumps({"error": "Username already exists"})
+                }
         
         # Insert new user
-        insert_query = """
-            INSERT INTO users (username, password, gendate, expired)
-            VALUES (%s, %s, %s, FALSE)
-            RETURNING id
-        """
-        cursor.execute(insert_query, (username, hashed_password.decode('utf-8'), gendate))
-        user_id = cursor.fetchone()[0]
+        with track_db_operation('generate-password', 'insert_user'):
+            insert_query = """
+                INSERT INTO users (username, password, gendate, expired)
+                VALUES (%s, %s, %s, FALSE)
+                RETURNING id
+            """
+            cursor.execute(insert_query, (username, hashed_password.decode('utf-8'), gendate))
+            user_id = cursor.fetchone()[0]
+            conn.commit()
         conn.commit()
         
         # Create QR code with the password

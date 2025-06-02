@@ -6,9 +6,12 @@ si son compte a expiré et s'il a activé l'authentification à deux facteurs (2
 import os
 import json
 import psycopg2
-from psycopg2 import sql, OperationalError
+from psycopg2 import sql
 from datetime import datetime, timezone
 from dotenv import load_dotenv
+from shared_metrics import (
+    track_request_metrics, track_db_operation, get_metrics, get_metrics_content_type
+)
 
 def get_db_connection():
     """Crée et retourne une connexion à la base de données."""
@@ -25,6 +28,7 @@ def get_db_connection():
     except Exception as e:
         raise Exception(f"Failed to connect to database: {str(e)}")
 
+@track_request_metrics('check-user-status')
 def handle(event, context):
     """Point d'entrée principal pour la fonction de vérification du statut de l'utilisateur.
 
@@ -54,6 +58,18 @@ def handle(event, context):
         dict: Un dictionnaire représentant la réponse HTTP, contenant 'statusCode' et 'body'.
               Le corps est une chaîne JSON avec les informations sur le statut de l'utilisateur.
     """
+    # Handle metrics endpoint
+    if hasattr(event, 'path') and event.path == '/metrics':
+        return {
+            "statusCode": 200,
+            "headers": {
+                "Content-Type": get_metrics_content_type()
+            },
+            "body": get_metrics().decode('utf-8')
+        }
+    
+    conn = None
+    cursor = None
     try:
         # Parse incoming request
         try:

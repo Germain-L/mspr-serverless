@@ -12,15 +12,18 @@ Il effectue les opérations suivantes :
 """
 import os
 import json
-import base64
 import pyotp
 import qrcode
+import base64
 import io
 import psycopg2
 from psycopg2 import sql
-from cryptography.fernet import Fernet
-from datetime import datetime, timezone
+from cryptography.fernet import Fernet, InvalidToken
 from dotenv import load_dotenv
+from shared_metrics import (
+    track_request_metrics, track_db_operation, track_2fa_operation, 
+    get_metrics, get_metrics_content_type
+)
 
 # Load environment variables at module level
 load_dotenv()
@@ -87,6 +90,7 @@ def create_qr_code(data):
     img.save(buffered, format="PNG")
     return base64.b64encode(buffered.getvalue()).decode('utf-8')
 
+@track_request_metrics('generate-2fa')
 def handle(event, context):
     """Point d'entrée principal pour la fonction de génération de 2FA.
 
@@ -114,6 +118,16 @@ def handle(event, context):
         dict: Un dictionnaire représentant la réponse HTTP, contenant 'statusCode' et 'body'.
               Le corps est une chaîne JSON avec les informations de configuration 2FA.
     """
+    # Handle metrics endpoint
+    if hasattr(event, 'path') and event.path == '/metrics':
+        return {
+            "statusCode": 200,
+            "headers": {
+                "Content-Type": get_metrics_content_type()
+            },
+            "body": get_metrics().decode('utf-8')
+        }
+    
     conn = None
     cursor = None
     try:

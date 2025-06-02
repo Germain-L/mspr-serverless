@@ -1,0 +1,41 @@
+{{- if and .Values.monitoring.enabled .Values.monitoring.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "mspr-serverless.fullname" . }}-frontend
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "mspr-serverless.labels" . | nindent 4 }}
+    component: frontend
+spec:
+  selector:
+    matchLabels:
+      {{- include "mspr-serverless.selectorLabels" . | nindent 6 }}
+      component: frontend
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: {{ .Values.monitoring.serviceMonitor.interval }}
+    scrapeTimeout: {{ .Values.monitoring.serviceMonitor.scrapeTimeout }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "mspr-serverless.fullname" . }}-openfaas-functions
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "mspr-serverless.labels" . | nindent 4 }}
+    component: openfaas-functions
+spec:
+  selector:
+    matchLabels:
+      faas_function: "true"
+  namespaceSelector:
+    matchNames:
+    - openfaas-fn
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: {{ .Values.monitoring.serviceMonitor.interval }}
+    scrapeTimeout: {{ .Values.monitoring.serviceMonitor.scrapeTimeout }}
+{{- end }}

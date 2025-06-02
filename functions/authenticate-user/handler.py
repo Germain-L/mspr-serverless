@@ -12,6 +12,10 @@ from psycopg2 import sql
 from cryptography.fernet import Fernet, InvalidToken
 from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
+from shared_metrics import (
+    track_request_metrics, track_db_operation, track_authentication, 
+    track_2fa_operation, get_metrics, get_metrics_content_type
+)
 
 
 # Load environment variables at module level
@@ -127,6 +131,7 @@ def is_account_expired(gendate_timestamp):
     return datetime.now(timezone.utc) > expiry_date
 
 
+@track_request_metrics('authenticate-user')
 def handle(event, context):
     """Point d'entrée principal pour la fonction d'authentification OpenFaaS.
 
@@ -157,6 +162,16 @@ def handle(event, context):
         dict: Un dictionnaire représentant la réponse HTTP, contenant 'statusCode' et 'body'.
               Le corps est une chaîne JSON avec des détails sur le résultat de l'authentification.
     """
+    # Handle metrics endpoint
+    if hasattr(event, 'path') and event.path == '/metrics':
+        return {
+            "statusCode": 200,
+            "headers": {
+                "Content-Type": get_metrics_content_type()
+            },
+            "body": get_metrics().decode('utf-8')
+        }
+    
     conn = None
     cursor = None
     try:
@@ -166,7 +181,7 @@ def handle(event, context):
             username = body.get('username')
             password = body.get('password')
             totp_code = body.get('totp_code')
-            context = body.get('context')  # Get the context
+            context_param = body.get('context')  # Get the context
         except json.JSONDecodeError:
             return {
                 "statusCode": 400,
@@ -174,7 +189,7 @@ def handle(event, context):
             }
         
         # Validate input based on context
-        if context == '2fa_setup_verification':
+        if context_param == '2fa_setup_verification':
             if not username or not totp_code:
                 return {
                     "statusCode": 400,
@@ -189,21 +204,24 @@ def handle(event, context):
                 }
         
         # Connect to database
-        conn = get_db_connection()
-        cursor = conn.cursor()
+        with track_db_operation('authenticate-user', 'connect'):
+            conn = get_db_connection()
+            cursor = conn.cursor()
         
         # Get user data
-        cursor.execute(
-            """
-            SELECT id, password, mfa, gendate, expired 
-            FROM users 
-            WHERE username = %s
-            """,
-            (username,)
-        )
-        user = cursor.fetchone()
+        with track_db_operation('authenticate-user', 'select_user'):
+            cursor.execute(
+                """
+                SELECT id, password, mfa, gendate, expired 
+                FROM users 
+                WHERE username = %s
+                """,
+                (username,)
+            )
+            user = cursor.fetchone()
         
         if not user:
+            track_authentication('authenticate-user', False)
             return {
                 "statusCode": 401,
                 "body": json.dumps({"error": "Invalid username or password"})
@@ -212,7 +230,7 @@ def handle(event, context):
         user_id, stored_password, encrypted_mfa, gendate, is_expired = user
         
         # --- 2FA Setup Verification Logic ---
-        if context == '2fa_setup_verification':
+        if context_param == '2fa_setup_verification':
             if not encrypted_mfa:
                 return {
                     "statusCode": 400, # Or 404 if user setup was incomplete
@@ -220,7 +238,10 @@ def handle(event, context):
                 }
             try:
                 mfa_secret = decrypt_secret(encrypted_mfa)
-                if not verify_totp(mfa_secret, totp_code):
+                totp_valid = verify_totp(mfa_secret, totp_code)
+                track_2fa_operation('authenticate-user', 'setup_verification', totp_valid)
+                
+                if not totp_valid:
                     return {
                         "statusCode": 401,
                         "body": json.dumps({"error": "Invalid TOTP code for 2FA setup"})
@@ -229,16 +250,19 @@ def handle(event, context):
                 # Check account expiration before confirming setup
                 is_expired_by_time_setup = is_account_expired(gendate)
                 if is_expired_by_time_setup and not is_expired:
-                    cursor.execute("UPDATE users SET expired = TRUE WHERE id = %s", (user_id,))
-                    conn.commit()
+                    with track_db_operation('authenticate-user', 'update_expired'):
+                        cursor.execute("UPDATE users SET expired = TRUE WHERE id = %s", (user_id,))
+                        conn.commit()
                     is_expired = True
                 
                 if is_expired or is_expired_by_time_setup:
+                    track_authentication('authenticate-user', False)
                     return {
                         "statusCode": 403,
                         "body": json.dumps({"status": "expired", "message": "Account has expired. Cannot complete 2FA setup."})
                     }
 
+                track_authentication('authenticate-user', True)
                 return {
                     "statusCode": 200,
                     "body": json.dumps({
@@ -249,6 +273,7 @@ def handle(event, context):
                     })
                 }
             except Exception as e:
+                track_2fa_operation('authenticate-user', 'setup_verification', False)
                 return {
                     "statusCode": 500,
                     "body": json.dumps({"error": f"2FA setup verification failed: {str(e)}"})
@@ -257,7 +282,9 @@ def handle(event, context):
 
         # --- Normal Login Logic (if not 2fa_setup_verification context) ---
         # Check password
-        if not check_password(stored_password, password):
+        password_valid = check_password(stored_password, password)
+        if not password_valid:
+            track_authentication('authenticate-user', False)
             return {
                 "statusCode": 401,
                 "body": json.dumps({"error": "Invalid username or password"})
@@ -274,12 +301,17 @@ def handle(event, context):
             # Decrypt and verify TOTP
             try:
                 mfa_secret = decrypt_secret(encrypted_mfa)
-                if not verify_totp(mfa_secret, totp_code):
+                totp_valid = verify_totp(mfa_secret, totp_code)
+                track_2fa_operation('authenticate-user', 'login_verification', totp_valid)
+                
+                if not totp_valid:
+                    track_authentication('authenticate-user', False)
                     return {
                         "statusCode": 401,
                         "body": json.dumps({"error": "Invalid TOTP code"})
                     }
             except Exception as e:
+                track_2fa_operation('authenticate-user', 'login_verification', False)
                 return {
                     "statusCode": 500,
                     "body": json.dumps({"error": f"TOTP verification failed: {str(e)}"})
@@ -290,18 +322,20 @@ def handle(event, context):
         
         # Update expired status if needed
         if is_expired_by_time and not is_expired:
-            update_query = """
-                UPDATE users 
-                SET expired = TRUE 
-                WHERE id = %s
-                RETURNING expired
-            """
-            cursor.execute(update_query, (user_id,))
-            conn.commit()
+            with track_db_operation('authenticate-user', 'update_expired'):
+                update_query = """
+                    UPDATE users 
+                    SET expired = TRUE 
+                    WHERE id = %s
+                    RETURNING expired
+                """
+                cursor.execute(update_query, (user_id,))
+                conn.commit()
             is_expired = True
         
         # Prepare response
         if is_expired or is_expired_by_time:
+            track_authentication('authenticate-user', False)
             return {
                 "statusCode": 403,
                 "body": json.dumps({
@@ -311,6 +345,7 @@ def handle(event, context):
             }
         
         # Authentication successful
+        track_authentication('authenticate-user', True)
         return {
             "statusCode": 200,
             "body": json.dumps({
