@@ -1,0 +1,366 @@
+{{- if and .Values.monitoring.enabled .Values.monitoring.grafana.dashboard.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "mspr-serverless.fullname" . }}-grafana-dashboard
+  namespace: {{ .Values.monitoring.grafana.dashboard.namespace }}
+  labels:
+    {{- include "mspr-serverless.labels" . | nindent 4 }}
+    {{- with .Values.monitoring.grafana.dashboard.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+data:
+  mspr-dashboard.json: |
+    {
+      "dashboard": {
+        "id": null,
+        "title": "{{ .Values.monitoring.grafana.dashboard.title }}",
+        "tags": {{ .Values.monitoring.grafana.dashboard.tags | toJson }},
+        "timezone": "browser",
+        "panels": [
+          {
+            "id": 1,
+            "title": "Frontend Service Status",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "up{job=\"frontend\", namespace=\"{{ .Values.namespace }}\"}",
+                "legendFormat": "Frontend",
+                "refId": "A"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "mappings": [
+                  {
+                    "options": {
+                      "0": {
+                        "text": "DOWN",
+                        "color": "red"
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "1": {
+                        "text": "UP",
+                        "color": "green"
+                      }
+                    },
+                    "type": "value"
+                  }
+                ],
+                "thresholds": {
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "green",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            },
+            "gridPos": {
+              "h": 4,
+              "w": 6,
+              "x": 0,
+              "y": 0
+            }
+          },
+          {
+            "id": 2,
+            "title": "PostgreSQL Status",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "pg_up{namespace=\"{{ .Values.namespace }}\"}",
+                "legendFormat": "PostgreSQL",
+                "refId": "A"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "mappings": [
+                  {
+                    "options": {
+                      "0": {
+                        "text": "DOWN",
+                        "color": "red"
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "1": {
+                        "text": "UP",
+                        "color": "green"
+                      }
+                    },
+                    "type": "value"
+                  }
+                ],
+                "thresholds": {
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "green",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            },
+            "gridPos": {
+              "h": 4,
+              "w": 6,
+              "x": 6,
+              "y": 0
+            }
+          },
+          {
+            "id": 3,
+            "title": "Active Database Connections",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "pg_stat_database_numbackends{namespace=\"{{ .Values.namespace }}\"}",
+                "legendFormat": "Connections",
+                "refId": "A"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "thresholds": {
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 50
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                }
+              }
+            },
+            "gridPos": {
+              "h": 4,
+              "w": 6,
+              "x": 12,
+              "y": 0
+            }
+          },
+          {
+            "id": 4,
+            "title": "Frontend Pods",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "count(up{job=\"frontend\", namespace=\"{{ .Values.namespace }}\"})",
+                "legendFormat": "Pods",
+                "refId": "A"
+              }
+            ],
+            "gridPos": {
+              "h": 4,
+              "w": 6,
+              "x": 18,
+              "y": 0
+            }
+          },
+          {
+            "id": 5,
+            "title": "HTTP Request Rate",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(http_requests_total{namespace=\"{{ .Values.namespace }}\"}[5m])",
+                "legendFormat": "{{`{{method}} {{route}}`}}",
+                "refId": "A"
+              }
+            ],
+            "yAxes": [
+              {
+                "label": "requests/sec",
+                "min": 0
+              }
+            ],
+            "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 0,
+              "y": 4
+            }
+          },
+          {
+            "id": 6,
+            "title": "HTTP Response Time",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, rate(http_request_duration_ms_bucket{namespace=\"{{ .Values.namespace }}\"}[5m]))",
+                "legendFormat": "95th percentile",
+                "refId": "A"
+              },
+              {
+                "expr": "histogram_quantile(0.50, rate(http_request_duration_ms_bucket{namespace=\"{{ .Values.namespace }}\"}[5m]))",
+                "legendFormat": "50th percentile",
+                "refId": "B"
+              }
+            ],
+            "yAxes": [
+              {
+                "label": "milliseconds",
+                "min": 0
+              }
+            ],
+            "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 12,
+              "y": 4
+            }
+          },
+          {
+            "id": 7,
+            "title": "PostgreSQL Connections",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "pg_stat_database_numbackends{namespace=\"{{ .Values.namespace }}\"}",
+                "legendFormat": "Active Connections",
+                "refId": "A"
+              },
+              {
+                "expr": "pg_settings_max_connections{namespace=\"{{ .Values.namespace }}\"}",
+                "legendFormat": "Max Connections",
+                "refId": "B"
+              }
+            ],
+            "yAxes": [
+              {
+                "label": "connections",
+                "min": 0
+              }
+            ],
+            "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 0,
+              "y": 12
+            }
+          },
+          {
+            "id": 8,
+            "title": "Memory Usage",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "process_resident_memory_bytes{namespace=\"{{ .Values.namespace }}\"}",
+                "legendFormat": "RSS Memory",
+                "refId": "A"
+              },
+              {
+                "expr": "nodejs_heap_size_used_bytes{namespace=\"{{ .Values.namespace }}\"}",
+                "legendFormat": "Heap Used",
+                "refId": "B"
+              }
+            ],
+            "yAxes": [
+              {
+                "label": "bytes",
+                "min": 0
+              }
+            ],
+            "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 12,
+              "y": 12
+            }
+          },
+          {
+            "id": 9,
+            "title": "CPU Usage",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(process_cpu_user_seconds_total{namespace=\"{{ .Values.namespace }}\"}[5m]) * 100",
+                "legendFormat": "User CPU %",
+                "refId": "A"
+              },
+              {
+                "expr": "rate(process_cpu_system_seconds_total{namespace=\"{{ .Values.namespace }}\"}[5m]) * 100",
+                "legendFormat": "System CPU %",
+                "refId": "B"
+              }
+            ],
+            "yAxes": [
+              {
+                "label": "percent",
+                "min": 0,
+                "max": 100
+              }
+            ],
+            "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 0,
+              "y": 20
+            }
+          },
+          {
+            "id": 10,
+            "title": "PostgreSQL Query Rate",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(pg_stat_database_tup_returned{namespace=\"{{ .Values.namespace }}\"}[5m])",
+                "legendFormat": "Rows Returned/sec",
+                "refId": "A"
+              },
+              {
+                "expr": "rate(pg_stat_database_tup_fetched{namespace=\"{{ .Values.namespace }}\"}[5m])",
+                "legendFormat": "Rows Fetched/sec",
+                "refId": "B"
+              }
+            ],
+            "yAxes": [
+              {
+                "label": "rows/sec",
+                "min": 0
+              }
+            ],
+            "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 12,
+              "y": 20
+            }
+          }
+        ],
+        "time": {
+          "from": "{{ .Values.monitoring.grafana.dashboard.timeRange.from }}",
+          "to": "{{ .Values.monitoring.grafana.dashboard.timeRange.to }}"
+        },
+        "refresh": "{{ .Values.monitoring.grafana.dashboard.refresh }}"
+      }
+    }
+{{- end }}

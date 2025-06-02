@@ -49,6 +49,9 @@ The following table lists the configurable parameters of the MSPR Serverless cha
 | `monitoring.serviceMonitor.interval` | Scrape interval | `30s` |
 | `monitoring.prometheusRule.enabled` | Enable PrometheusRule creation | `true` |
 | `monitoring.postgres.exporter.enabled` | Enable PostgreSQL metrics exporter | `true` |
+| `monitoring.grafana.dashboard.enabled` | Enable Grafana dashboard creation | `true` |
+| `monitoring.grafana.dashboard.namespace` | Grafana dashboard namespace | `monitoring` |
+| `monitoring.grafana.dashboard.title` | Dashboard title | `MSPR Serverless Application` |
 
 ## Upgrading
 
@@ -133,4 +136,9 @@ monitoring:
   postgres:
     exporter:
       enabled: true
+  grafana:
+    dashboard:
+      enabled: true
+      namespace: monitoring
+      title: "MSPR Serverless Application"
 ```

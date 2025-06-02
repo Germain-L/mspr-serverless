@@ -127,12 +127,24 @@ monitoring:
     enabled: true
     namespace: monitoring  # Adjust to your prometheus namespace
     labels:
-      prometheus: kube-prometheus
+      release: kube-prometheus
     interval: 30s
     scrapeTimeout: 10s
   prometheusRule:
     enabled: true
     namespace: monitoring
+  grafana:
+    dashboard:
+      enabled: true
+      namespace: monitoring
+      labels:
+        grafana_dashboard: "1"
+      title: "MSPR Serverless Application"
+      tags: ["mspr", "serverless", "nodejs", "postgresql"]
+      refresh: "30s"
+      timeRange:
+        from: "now-1h"
+        to: "now"
   postgres:
     exporter:
       enabled: true

@@ -189,6 +189,8 @@ if helm upgrade --install $HELM_RELEASE ./chart \
   --set monitoring.serviceMonitor.namespace=$MONITORING_NAMESPACE \
   --set monitoring.prometheusRule.enabled=true \
   --set monitoring.prometheusRule.namespace=$MONITORING_NAMESPACE \
+  --set monitoring.grafana.dashboard.enabled=true \
+  --set monitoring.grafana.dashboard.namespace=$MONITORING_NAMESPACE \
   --set monitoring.postgres.exporter.enabled=true \
   --wait \
   --timeout=10m; then
@@ -232,6 +234,7 @@ echo ""
 log_info "Monitoring resources:"
 kubectl get servicemonitor -n $MONITORING_NAMESPACE | grep mspr-serverless || log_warning "ServiceMonitor not found"
 kubectl get prometheusrule -n $MONITORING_NAMESPACE | grep mspr-serverless || log_warning "PrometheusRule not found"
+kubectl get configmap -n $MONITORING_NAMESPACE -l grafana_dashboard=1 | grep mspr-serverless || log_warning "Grafana dashboard ConfigMap not found"
 
 # Step 7: Test monitoring endpoints
 log_info "Step 7: Testing monitoring endpoints..."
@@ -273,8 +276,13 @@ echo ""
 echo "📈 ${BLUE}Monitoring:${NC}"
 echo "   ServiceMonitor: $MONITORING_NAMESPACE/mspr-serverless"
 echo "   PrometheusRule: $MONITORING_NAMESPACE/mspr-serverless"
+echo "   Grafana Dashboard: $MONITORING_NAMESPACE/mspr-serverless (ConfigMap)"
 echo "   Frontend metrics: /metrics endpoint"
 echo "   PostgreSQL metrics: postgres-exporter sidecar"
+echo ""
+echo "📊 ${BLUE}Access Grafana Dashboard:${NC}"
+echo "   kubectl port-forward svc/kube-prometheus-stack-grafana 3000:80 -n $MONITORING_NAMESPACE"
+echo "   Open: http://localhost:3000 (Dashboard: 'MSPR Serverless Application')"
 echo ""
 echo "🔍 ${BLUE}Useful commands:${NC}"
 echo "   Check pods: kubectl get pods -n $NAMESPACE"
