@@ -1,7 +1,11 @@
 """
 Ce module gère l'authentification des utilisateurs pour une fonction OpenFaaS.
 Il comprend la vérification du mot de passe, l'authentification à deux facteurs (2FA) via TOTP,
-la gestion de l'expiration des comptes et l'interaction avec une base de données PostgreSQL.
+la gestion de l'expiration         if not user:
+            return {
+                "statusCode": 401,
+                "body": json.dumps({"error": "Invalid credentials"})
+            }mptes et l'interaction avec une base de données PostgreSQL.
 """
 import os
 import json
@@ -12,10 +16,6 @@ from psycopg2 import sql
 from cryptography.fernet import Fernet, InvalidToken
 from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
-from .shared_metrics import (
-    track_request_metrics, track_db_operation, track_authentication, 
-    track_2fa_operation, get_metrics, get_metrics_content_type
-)
 
 
 # Load environment variables at module level
@@ -131,7 +131,6 @@ def is_account_expired(gendate_timestamp):
     return datetime.now(timezone.utc) > expiry_date
 
 
-@track_request_metrics('authenticate-user')
 def handle(event, context):
     """Point d'entrée principal pour la fonction d'authentification OpenFaaS.
 
@@ -162,15 +161,6 @@ def handle(event, context):
         dict: Un dictionnaire représentant la réponse HTTP, contenant 'statusCode' et 'body'.
               Le corps est une chaîne JSON avec des détails sur le résultat de l'authentification.
     """
-    # Handle metrics endpoint
-    if hasattr(event, 'path') and event.path == '/metrics':
-        return {
-            "statusCode": 200,
-            "headers": {
-                "Content-Type": get_metrics_content_type()
-            },
-            "body": get_metrics().decode('utf-8')
-        }
     
     conn = None
     cursor = None
@@ -204,24 +194,21 @@ def handle(event, context):
                 }
         
         # Connect to database
-        with track_db_operation('authenticate-user', 'connect'):
-            conn = get_db_connection()
-            cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor()
         
         # Get user data
-        with track_db_operation('authenticate-user', 'select_user'):
-            cursor.execute(
-                """
-                SELECT id, password, mfa, gendate, expired 
-                FROM users 
-                WHERE username = %s
-                """,
-                (username,)
-            )
-            user = cursor.fetchone()
+        cursor.execute(
+            """
+            SELECT id, password, mfa, gendate, expired 
+            FROM users 
+            WHERE username = %s
+            """,
+            (username,)
+        )
+        user = cursor.fetchone()
         
         if not user:
-            track_authentication('authenticate-user', False)
             return {
                 "statusCode": 401,
                 "body": json.dumps({"error": "Invalid username or password"})
@@ -239,7 +226,6 @@ def handle(event, context):
             try:
                 mfa_secret = decrypt_secret(encrypted_mfa)
                 totp_valid = verify_totp(mfa_secret, totp_code)
-                track_2fa_operation('authenticate-user', 'setup_verification', totp_valid)
                 
                 if not totp_valid:
                     return {
@@ -250,19 +236,16 @@ def handle(event, context):
                 # Check account expiration before confirming setup
                 is_expired_by_time_setup = is_account_expired(gendate)
                 if is_expired_by_time_setup and not is_expired:
-                    with track_db_operation('authenticate-user', 'update_expired'):
-                        cursor.execute("UPDATE users SET expired = TRUE WHERE id = %s", (user_id,))
-                        conn.commit()
+                    cursor.execute("UPDATE users SET expired = TRUE WHERE id = %s", (user_id,))
+                    conn.commit()
                     is_expired = True
                 
                 if is_expired or is_expired_by_time_setup:
-                    track_authentication('authenticate-user', False)
                     return {
                         "statusCode": 403,
                         "body": json.dumps({"status": "expired", "message": "Account has expired. Cannot complete 2FA setup."})
                     }
 
-                track_authentication('authenticate-user', True)
                 return {
                     "statusCode": 200,
                     "body": json.dumps({
@@ -273,7 +256,6 @@ def handle(event, context):
                     })
                 }
             except Exception as e:
-                track_2fa_operation('authenticate-user', 'setup_verification', False)
                 return {
                     "statusCode": 500,
                     "body": json.dumps({"error": f"2FA setup verification failed: {str(e)}"})
@@ -284,7 +266,6 @@ def handle(event, context):
         # Check password
         password_valid = check_password(stored_password, password)
         if not password_valid:
-            track_authentication('authenticate-user', False)
             return {
                 "statusCode": 401,
                 "body": json.dumps({"error": "Invalid username or password"})
@@ -302,16 +283,13 @@ def handle(event, context):
             try:
                 mfa_secret = decrypt_secret(encrypted_mfa)
                 totp_valid = verify_totp(mfa_secret, totp_code)
-                track_2fa_operation('authenticate-user', 'login_verification', totp_valid)
                 
                 if not totp_valid:
-                    track_authentication('authenticate-user', False)
                     return {
                         "statusCode": 401,
                         "body": json.dumps({"error": "Invalid TOTP code"})
                     }
             except Exception as e:
-                track_2fa_operation('authenticate-user', 'login_verification', False)
                 return {
                     "statusCode": 500,
                     "body": json.dumps({"error": f"TOTP verification failed: {str(e)}"})
@@ -322,20 +300,18 @@ def handle(event, context):
         
         # Update expired status if needed
         if is_expired_by_time and not is_expired:
-            with track_db_operation('authenticate-user', 'update_expired'):
-                update_query = """
-                    UPDATE users 
-                    SET expired = TRUE 
-                    WHERE id = %s
-                    RETURNING expired
-                """
-                cursor.execute(update_query, (user_id,))
-                conn.commit()
+            update_query = """
+                UPDATE users 
+                SET expired = TRUE 
+                WHERE id = %s
+                RETURNING expired
+            """
+            cursor.execute(update_query, (user_id,))
+            conn.commit()
             is_expired = True
         
         # Prepare response
         if is_expired or is_expired_by_time:
-            track_authentication('authenticate-user', False)
             return {
                 "statusCode": 403,
                 "body": json.dumps({
@@ -345,7 +321,6 @@ def handle(event, context):
             }
         
         # Authentication successful
-        track_authentication('authenticate-user', True)
         return {
             "statusCode": 200,
             "body": json.dumps({

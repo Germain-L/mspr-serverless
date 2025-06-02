@@ -382,12 +382,6 @@ ENCRYPTION_KEY=bA8tcGhp8hZsSSqIEv1hGUvrfUuiyB8XMCICfSmrV3k=
 - **generate-password**: Only requires database environment variables
 - **check-user-status**: Only requires database environment variables
 
-## Monitoring and Metrics
-
-The `authenticate-user` function includes a metrics endpoint accessible at:
-- **External**: `https://openfaas.germainleignel.com/function/authenticate-user/metrics`
-- **Internal**: `http://authenticate-user.openfaas-fn.svc.cluster.local:8080/metrics`
-
 ## Security Considerations
 
 1. **HTTPS**: All external access should use HTTPS

@@ -1,3 +1,8 @@
 repomix-output.xml
 template/
 venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
