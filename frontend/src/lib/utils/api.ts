@@ -5,8 +5,8 @@ import type {
   Generate2FAResponse 
 } from '$lib/types/auth';
 
-// Use local API routes instead of external OpenFaaS
-const API_BASE = '/api/auth';
+// Get API base URL from environment variables, with fallback
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://openfaas.germainleignel.com/function';
 
 export class AuthAPI {
   private static async makeRequest<T>(endpoint: string, data: any): Promise<T> {
@@ -20,45 +20,48 @@ export class AuthAPI {
           'Accept': 'application/json'
         },
         body: JSON.stringify(data),
+        // Add CORS mode for cross-origin requests
+        mode: 'cors'
       });
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        console.error(`HTTP ${response.status}: ${errorText}`);
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
       }
       
       return await response.json();
     } catch (error) {
       console.error(`API Error (${endpoint}):`, error);
+      // Provide more detailed error information
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error(`Network error: Could not connect to ${API_BASE}/${endpoint}. Please check if the API server is running.`);
+      }
       throw error;
     }
   }
 
   static async createUser(username: string): Promise<CreateUserResponse> {
-    return this.makeRequest<CreateUserResponse>('create-user', { username });
+    return this.makeRequest<CreateUserResponse>('generate-password', { username });
   }
 
   static async setup2FA(username: string): Promise<Generate2FAResponse> {
-    return this.makeRequest<Generate2FAResponse>('setup-2fa', { username });
+    return this.makeRequest<Generate2FAResponse>('generate-2fa', { username });
   }
 
   static async authenticate(
     username: string, 
     password: string, 
-    totp_code?: string,
-    context?: string // Added context parameter
+    totp_code?: string
   ): Promise<AuthResponse> {
     const payload: any = { username, password };
     if (totp_code) {
       payload.totp_code = totp_code;
     }
-    if (context) { // Add context to payload if provided
-      payload.context = context;
-    }
-    return this.makeRequest<AuthResponse>('authenticate', payload);
+    return this.makeRequest<AuthResponse>('authenticate-user', payload);
   }
 
   static async checkUserStatus(username: string): Promise<CheckUserResponse> {
-    return this.makeRequest<CheckUserResponse>('check-user', { username });
+    return this.makeRequest<CheckUserResponse>('check-user-status', { username });
   }
 }

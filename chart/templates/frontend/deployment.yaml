@@ -26,12 +26,6 @@ spec:
         env:
         - name: NODE_ENV
           value: production
-        - name: OPENFAAS_GATEWAY_INTERNAL
-          value: {{ .Values.openfaas.gatewayInternal | quote }}
-        - name: PORT
-          value: "{{ .Values.frontend.containerPort }}"
-        - name: HOST
-          value: "0.0.0.0"
         resources:
           {{- toYaml .Values.frontend.resources | nindent 10 }}
         {{- if .Values.frontend.livenessProbe.enabled }}

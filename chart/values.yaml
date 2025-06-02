@@ -5,13 +5,6 @@
 # Global settings
 namespace: cofrap
 
-# OpenFaaS configuration
-openfaas:
-  # OpenFaaS gateway internal endpoint (used by frontend for server-side API calls)
-  gatewayInternal: "http://gateway.openfaas.svc.cluster.local:8080"
-  # Note: OpenFaaS should be deployed in the 'openfaas' namespace
-  # Functions are deployed via the functions/stack.yaml
-
 # PostgreSQL configuration
 postgresql:
   enabled: true

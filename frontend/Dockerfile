@@ -47,7 +47,6 @@ EXPOSE 3000
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOST=0.0.0.0
-ENV OPENFAAS_GATEWAY_INTERNAL=http://gateway.openfaas.svc.cluster.local:8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \

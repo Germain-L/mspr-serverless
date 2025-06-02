@@ -12,7 +12,7 @@ from psycopg2 import sql
 from cryptography.fernet import Fernet, InvalidToken
 from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
-from .metrics import MetricsMiddleware
+
 
 # Load environment variables at module level
 load_dotenv()
@@ -126,7 +126,7 @@ def is_account_expired(gendate_timestamp):
     expiry_date = creation_date + timedelta(days=ACCOUNT_EXPIRY_DAYS)
     return datetime.now(timezone.utc) > expiry_date
 
-@MetricsMiddleware(function_name='authenticate-user')
+
 def handle(event, context):
     """Point d'entrée principal pour la fonction d'authentification OpenFaaS.
 
