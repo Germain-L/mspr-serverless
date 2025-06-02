@@ -43,6 +43,12 @@ The following table lists the configurable parameters of the MSPR Serverless cha
 | `frontend.ingress.enabled` | Enable ingress for frontend | `true` |
 | `adminer.enabled` | Enable Adminer | `true` |
 | `migrations.enabled` | Enable database migrations | `true` |
+| `monitoring.enabled` | Enable monitoring | `true` |
+| `monitoring.serviceMonitor.enabled` | Enable ServiceMonitor creation | `true` |
+| `monitoring.serviceMonitor.namespace` | ServiceMonitor namespace | `monitoring` |
+| `monitoring.serviceMonitor.interval` | Scrape interval | `30s` |
+| `monitoring.prometheusRule.enabled` | Enable PrometheusRule creation | `true` |
+| `monitoring.postgres.exporter.enabled` | Enable PostgreSQL metrics exporter | `true` |
 
 ## Upgrading
 
@@ -79,4 +85,52 @@ You can customize the deployment by creating a custom `values.yaml` file and usi
 
 ```bash
 helm install mspr-serverless ./chart -f my-values.yaml
+```
+
+## Monitoring
+
+This chart includes monitoring configuration for Prometheus. When `monitoring.enabled` is set to `true`, it will create:
+
+- **ServiceMonitor**: For scraping metrics from the frontend and PostgreSQL exporter
+- **PrometheusRule**: For alerting rules covering application health, resource usage, and database performance
+- **PostgreSQL Exporter**: A sidecar container that exports PostgreSQL metrics
+
+### Prerequisites for Monitoring
+
+- Prometheus Operator installed in your cluster
+- `kube-prometheus-chart` or similar Prometheus stack deployed
+- ServiceMonitor discovery configured to match the labels in `monitoring.serviceMonitor.labels`
+
+### Metrics Endpoints
+
+- Frontend metrics: `http://frontend-service/metrics`
+- PostgreSQL metrics: Available via the postgres-exporter sidecar on port 9187
+
+### Alerting Rules
+
+The chart includes several alerting rules:
+- **FrontendDown**: Alerts when the frontend service is unavailable
+- **PostgreSQLDown**: Alerts when PostgreSQL is unavailable
+- **HighCPUUsage**: Alerts when CPU usage exceeds 80%
+- **HighMemoryUsage**: Alerts when memory usage exceeds 80%
+- **PostgreSQLConnectionsHigh**: Alerts when PostgreSQL connections exceed threshold
+- **PostgreSQLSlowQueries**: Alerts when query efficiency drops below 10%
+
+### Example Monitoring Configuration
+
+```yaml
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    namespace: monitoring
+    labels:
+      prometheus: kube-prometheus
+    interval: 30s
+  prometheusRule:
+    enabled: true
+    namespace: monitoring
+  postgres:
+    exporter:
+      enabled: true
 ```

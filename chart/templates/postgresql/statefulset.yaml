@@ -5,16 +5,19 @@ metadata:
   name: postgres
   namespace: {{ .Values.namespace }}
   labels:
-    app: postgres
+    {{- include "mspr-serverless.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: postgres
+      {{- include "mspr-serverless.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: postgresql
   template:
     metadata:
       labels:
-        app: postgres
+        {{- include "mspr-serverless.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: postgresql
     spec:
       containers:
       - name: postgres
@@ -35,6 +38,18 @@ spec:
           mountPath: /var/lib/postgresql/data
         resources:
           {{- toYaml .Values.postgresql.resources | nindent 10 }}
+      {{- if and .Values.monitoring.enabled .Values.monitoring.postgres.exporter.enabled }}
+      - name: postgres-exporter
+        image: "{{ .Values.monitoring.postgres.exporter.image.repository }}:{{ .Values.monitoring.postgres.exporter.image.tag }}"
+        ports:
+        - containerPort: {{ .Values.monitoring.postgres.exporter.port }}
+          name: metrics
+        env:
+        - name: DATA_SOURCE_NAME
+          value: "postgresql://{{ .Values.postgresql.auth.username }}:{{ .Values.postgresql.auth.password }}@localhost:5432/{{ .Values.postgresql.auth.database }}?sslmode=disable"
+        resources:
+          {{- toYaml .Values.monitoring.postgres.exporter.resources | nindent 10 }}
+      {{- end }}
       volumes:
       - name: postgres-data
         persistentVolumeClaim:

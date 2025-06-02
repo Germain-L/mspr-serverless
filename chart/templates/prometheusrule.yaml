@@ -1,0 +1,66 @@
+{{- if and .Values.monitoring.enabled .Values.monitoring.prometheusRule.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "mspr-serverless.fullname" . }}
+  namespace: {{ .Values.monitoring.prometheusRule.namespace | default .Release.Namespace }}
+  labels:
+    {{- include "mspr-serverless.labels" . | nindent 4 }}
+spec:
+  groups:
+  - name: mspr-serverless.rules
+    rules:
+    - alert: FrontendDown
+      expr: up{job="{{ include "mspr-serverless.fullname" . }}"} == 0
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "MSPR Frontend is down"
+        description: "The MSPR frontend has been down for more than 5 minutes."
+    
+    - alert: PostgreSQLDown
+      expr: up{job="{{ include "mspr-serverless.fullname" . }}-postgresql"} == 0
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "PostgreSQL is down"
+        description: "PostgreSQL database has been down for more than 5 minutes."
+    
+    - alert: HighCPUUsage
+      expr: rate(container_cpu_usage_seconds_total{pod=~"{{ include "mspr-serverless.fullname" . }}-.*"}[5m]) > 0.8
+      for: 10m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High CPU usage detected"
+        description: "CPU usage is above 80% for more than 10 minutes."
+    
+    - alert: HighMemoryUsage
+      expr: container_memory_working_set_bytes{pod=~"{{ include "mspr-serverless.fullname" . }}-.*"} / container_spec_memory_limit_bytes > 0.8
+      for: 10m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High memory usage detected"
+        description: "Memory usage is above 80% for more than 10 minutes."
+    
+    - alert: PostgreSQLConnectionsHigh
+      expr: pg_stat_database_numbackends{job="{{ include "mspr-serverless.fullname" . }}-postgresql"} > 80
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "PostgreSQL high number of connections"
+        description: "PostgreSQL has {{ "{{ $value }}" }} connections, which is above the threshold."
+    
+    - alert: PostgreSQLSlowQueries
+      expr: rate(pg_stat_database_tup_returned{job="{{ include "mspr-serverless.fullname" . }}-postgresql"}[5m]) / rate(pg_stat_database_tup_fetched{job="{{ include "mspr-serverless.fullname" . }}-postgresql"}[5m]) < 0.1
+      for: 10m
+      labels:
+        severity: warning
+      annotations:
+        summary: "PostgreSQL slow queries detected"
+        description: "PostgreSQL query efficiency is below 10% for more than 10 minutes."
+{{- end }}

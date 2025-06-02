@@ -6,12 +6,21 @@ metadata:
   name: postgres
   namespace: {{ .Values.namespace }}
   labels:
-    app: postgres
+    {{- include "mspr-serverless.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql
 spec:
   selector:
-    app: postgres
+    {{- include "mspr-serverless.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql
   ports:
-    - protocol: TCP
+    - name: postgresql
+      protocol: TCP
       port: 5432
       targetPort: 5432
+  {{- if and .Values.monitoring.enabled .Values.monitoring.postgres.exporter.enabled }}
+    - name: postgres-metrics
+      protocol: TCP
+      port: {{ .Values.monitoring.postgres.exporter.port }}
+      targetPort: {{ .Values.monitoring.postgres.exporter.port }}
+  {{- end }}
 {{- end }}

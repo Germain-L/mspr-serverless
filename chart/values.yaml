@@ -119,3 +119,32 @@ migrations:
             gendate BIGINT NOT NULL,
             expired BOOLEAN DEFAULT FALSE
         );
+
+# Monitoring configuration
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    namespace: monitoring  # Adjust to your prometheus namespace
+    labels:
+      prometheus: kube-prometheus
+    interval: 30s
+    scrapeTimeout: 10s
+  prometheusRule:
+    enabled: true
+    namespace: monitoring
+  postgres:
+    exporter:
+      enabled: true
+      image:
+        repository: quay.io/prometheuscommunity/postgres-exporter
+        tag: v0.15.0
+        pullPolicy: IfNotPresent
+      port: 9187
+      resources:
+        requests:
+          memory: "64Mi"
+          cpu: "100m"
+        limits:
+          memory: "128Mi"
+          cpu: "200m"

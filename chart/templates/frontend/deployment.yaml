@@ -5,16 +5,19 @@ metadata:
   name: frontend
   namespace: {{ .Values.namespace }}
   labels:
-    app: frontend
+    {{- include "mspr-serverless.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
 spec:
   replicas: {{ .Values.frontend.replicaCount }}
   selector:
     matchLabels:
-      app: frontend
+      {{- include "mspr-serverless.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: frontend
   template:
     metadata:
       labels:
-        app: frontend
+        {{- include "mspr-serverless.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: frontend
     spec:
       containers:
       - name: frontend

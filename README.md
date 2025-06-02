@@ -11,6 +11,7 @@ This project implements a serverless application built with OpenFaaS and SvelteK
   - `generate-2fa/` - Generate 2FA secrets and QR codes
   - `generate-password/` - Generate secure passwords and create users
 - `chart/` - Helm chart for Kubernetes deployment
+- `scripts/` - Deployment and management scripts
 
 ## Features
 
@@ -19,26 +20,77 @@ This project implements a serverless application built with OpenFaaS and SvelteK
 - Account expiration management
 - PostgreSQL database integration
 - Kubernetes deployment with Helm
+- Prometheus monitoring with custom metrics and alerting
 
-## Deployment
+## Quick Start
+
+### Prerequisites
+```bash
+# Login to Docker registry
+docker login registry.germainleignel.com
+
+# Login to OpenFaaS (if not already done)
+faas-cli login --gateway https://your-openfaas-gateway
+```
+
+### Automated Setup
+```bash
+# Set up environment automatically
+./scripts/setup-env.sh
+
+# Deploy the complete application stack
+./deploy.sh
+```
+
+### Test Monitoring (Optional)
+```bash
+# Verify monitoring endpoints
+./scripts/test-monitoring.sh
+```
+
+### Cleanup
+```bash
+# Remove all deployed resources
+./scripts/cleanup.sh
+```
+
+## Manual Deployment
+
+If you prefer to deploy components individually:
+
+## Manual Deployment
+
+If you prefer to deploy components individually:
 
 1. **Build and Deploy Functions**:
    ```bash
    cd functions
    faas-cli build -f stack.yaml
-   faas-cli deploy -f stack.yaml
+   faas-cli push -f stack.yaml
+   faas-cli deploy -f stack.yaml --gateway $OPENFAAS_URL
    ```
 
-2. **Deploy Frontend**:
+2. **Build and Push Frontend**:
    ```bash
    cd frontend
-   npm run build
-   # Deploy using your container registry
+   docker build -t registry.germainleignel.com/library/frontend:latest .
+   docker push registry.germainleignel.com/library/frontend:latest
    ```
 
-3. **Apply Kubernetes Resources**:
+3. **Deploy with Helm**:
    ```bash
    helm upgrade --install mspr-serverless ./chart \
      --namespace cofrap \
-     --create-namespace
+     --create-namespace \
+     --set monitoring.enabled=true
    ```
+
+## Monitoring
+
+The application includes comprehensive monitoring with:
+- **Prometheus metrics** from frontend and PostgreSQL
+- **Custom alerting rules** for application health
+- **ServiceMonitor and PrometheusRule** for Prometheus Operator
+- **PostgreSQL exporter** for database metrics
+
+See `scripts/README.md` for detailed information about deployment scripts and monitoring setup.
