@@ -119,10 +119,19 @@ def handle(event, context):
         
     except Exception as e:
         error_msg = str(e)
-        if conn and 'cursor' in locals() and cursor:
-            cursor.close()
-        if conn and 'conn' in locals():
-            conn.close()
+        
+        # Clean up database connections safely
+        try:
+            if 'cursor' in locals() and cursor:
+                cursor.close()
+        except Exception as cursor_error:
+            print(f"Error closing cursor: {cursor_error}")
+        
+        try:
+            if 'conn' in locals() and conn:
+                conn.close()
+        except Exception as conn_error:
+            print(f"Error closing connection: {conn_error}")
         
         return {
             "statusCode": 500,

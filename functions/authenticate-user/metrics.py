@@ -52,7 +52,7 @@ class MetricsMiddleware:
         self.function_name = function_name
     
     def __call__(self, handler_func):
-        def wrapper(req):
+        def wrapper(event, context=None):
             # Increase active requests
             ACTIVE_REQUESTS.labels(function_name=self.function_name).inc()
             
@@ -61,7 +61,7 @@ class MetricsMiddleware:
             
             try:
                 # Call the original handler
-                result = handler_func(req)
+                result = handler_func(event, context)
                 
                 # Record metrics based on the result
                 status_code = result.get('statusCode', 500)

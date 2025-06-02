@@ -45,11 +45,15 @@ export class AuthAPI {
   static async authenticate(
     username: string, 
     password: string, 
-    totp_code?: string
+    totp_code?: string,
+    context?: string // Added context parameter
   ): Promise<AuthResponse> {
     const payload: any = { username, password };
     if (totp_code) {
       payload.totp_code = totp_code;
+    }
+    if (context) { // Add context to payload if provided
+      payload.context = context;
     }
     return this.makeRequest<AuthResponse>('authenticate', payload);
   }

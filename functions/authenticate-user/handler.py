@@ -12,26 +12,7 @@ from psycopg2 import sql
 from cryptography.fernet import Fernet, InvalidToken
 from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
-from metrics import MetricsMiddleware, get_metrics
-import uvicorn
-from fastapi import FastAPI, Request
-from fastapi.responses import PlainTextResponse
-import threading
-
-# Create FastAPI app for metrics endpoint
-metrics_app = FastAPI()
-
-@metrics_app.get('/metrics', response_class=PlainTextResponse)
-async def metrics():
-    return get_metrics()
-
-# Start metrics server in a separate thread
-def start_metrics_server():
-    uvicorn.run(metrics_app, host='0.0.0.0', port=8081)
-
-# Start metrics server in background
-metrics_thread = threading.Thread(target=start_metrics_server, daemon=True)
-metrics_thread.start()
+from .metrics import MetricsMiddleware
 
 # Load environment variables at module level
 load_dotenv()
@@ -185,18 +166,27 @@ def handle(event, context):
             username = body.get('username')
             password = body.get('password')
             totp_code = body.get('totp_code')
+            context = body.get('context')  # Get the context
         except json.JSONDecodeError:
             return {
                 "statusCode": 400,
                 "body": json.dumps({"error": "Invalid JSON in request body"})
             }
         
-        # Validate input
-        if not username or not password:
-            return {
-                "statusCode": 400,
-                "body": json.dumps({"error": "Username and password are required"})
-            }
+        # Validate input based on context
+        if context == '2fa_setup_verification':
+            if not username or not totp_code:
+                return {
+                    "statusCode": 400,
+                    "body": json.dumps({"error": "Username and TOTP code are required for 2FA setup verification"})
+                }
+            # Password is not required for 2FA setup verification
+        else:  # Normal login
+            if not username or not password:
+                return {
+                    "statusCode": 400,
+                    "body": json.dumps({"error": "Username and password are required"})
+                }
         
         # Connect to database
         conn = get_db_connection()
@@ -221,6 +211,51 @@ def handle(event, context):
         
         user_id, stored_password, encrypted_mfa, gendate, is_expired = user
         
+        # --- 2FA Setup Verification Logic ---
+        if context == '2fa_setup_verification':
+            if not encrypted_mfa:
+                return {
+                    "statusCode": 400, # Or 404 if user setup was incomplete
+                    "body": json.dumps({"error": "2FA is not pending setup for this user or secret not found"})
+                }
+            try:
+                mfa_secret = decrypt_secret(encrypted_mfa)
+                if not verify_totp(mfa_secret, totp_code):
+                    return {
+                        "statusCode": 401,
+                        "body": json.dumps({"error": "Invalid TOTP code for 2FA setup"})
+                    }
+                # TOTP is valid for setup
+                # Check account expiration before confirming setup
+                is_expired_by_time_setup = is_account_expired(gendate)
+                if is_expired_by_time_setup and not is_expired:
+                    cursor.execute("UPDATE users SET expired = TRUE WHERE id = %s", (user_id,))
+                    conn.commit()
+                    is_expired = True
+                
+                if is_expired or is_expired_by_time_setup:
+                    return {
+                        "statusCode": 403,
+                        "body": json.dumps({"status": "expired", "message": "Account has expired. Cannot complete 2FA setup."})
+                    }
+
+                return {
+                    "statusCode": 200,
+                    "body": json.dumps({
+                        "status": "success", 
+                        "message": "2FA setup verified and active",
+                        "user_id": user_id,
+                        "has_2fa": True
+                    })
+                }
+            except Exception as e:
+                return {
+                    "statusCode": 500,
+                    "body": json.dumps({"error": f"2FA setup verification failed: {str(e)}"})
+                }
+        # --- End of 2FA Setup Verification Logic ---
+
+        # --- Normal Login Logic (if not 2fa_setup_verification context) ---
         # Check password
         if not check_password(stored_password, password):
             return {

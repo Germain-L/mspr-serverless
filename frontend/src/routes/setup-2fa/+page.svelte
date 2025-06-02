@@ -70,7 +70,7 @@
 
     try {
       // Test authentication with the 2FA code to verify it works
-      const response = await AuthAPI.authenticate(username, '', verificationCode);
+      const response = await AuthAPI.authenticate(username, '', verificationCode, '2fa_setup_verification');
       
       if (response.error && !response.error.includes('Invalid username or password')) {
         // If the error is not about password (which is expected since we're not providing one)
