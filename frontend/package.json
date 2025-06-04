@@ -14,7 +14,17 @@
 		"lint": "prettier --check . && eslint .",
 		"test:unit": "vitest",
 		"test": "npm run test:unit -- --run && npm run test:e2e",
-		"test:e2e": "playwright test"
+		"test:e2e": "playwright test",
+		"test:e2e:ui": "playwright test --ui",
+		"test:e2e:headed": "playwright test --headed",
+		"test:e2e:debug": "playwright test --debug",
+		"test:e2e:report": "playwright show-report",
+		"test:e2e:auth": "playwright test authentication.test.ts",
+		"test:e2e:dashboard": "playwright test dashboard.test.ts",
+		"test:e2e:registration": "playwright test registration.test.ts",
+		"test:e2e:chrome": "playwright test --project=chromium",
+		"test:e2e:firefox": "playwright test --project=firefox",
+		"test:e2e:webkit": "playwright test --project=webkit"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^1.2.5",
