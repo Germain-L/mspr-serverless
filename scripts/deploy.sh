@@ -5,6 +5,28 @@
 
 set -e
 
+# Parse command line arguments
+FORCE_RECREATE_NS=false
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --force-recreate-namespace)
+            FORCE_RECREATE_NS=true
+            shift
+            ;;
+        -h|--help)
+            echo "Usage: $0 [--force-recreate-namespace]"
+            echo "  --force-recreate-namespace: Delete the existing application namespace before deployment"
+            echo "                              (Helm will create it fresh with proper metadata)"
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Use --help for usage information"
+            exit 1
+            ;;
+    esac
+done
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -158,6 +180,14 @@ cd ..
 # Step 3: Create monitoring namespace (Helm will create the main namespace)
 log_info "Step 3: Creating monitoring namespace..."
 
+# Handle force recreate for main namespace if needed
+if $FORCE_RECREATE_NS && kubectl get namespace $NAMESPACE >/dev/null 2>&1; then
+    log_warning "Force recreating namespace $NAMESPACE..."
+    kubectl delete namespace $NAMESPACE --wait=true
+    log_success "Namespace $NAMESPACE deleted"
+fi
+
+# Create monitoring namespace only
 if ! kubectl get namespace $MONITORING_NAMESPACE >/dev/null 2>&1; then
     log_warning "Monitoring namespace $MONITORING_NAMESPACE does not exist. Creating it..."
     kubectl create namespace $MONITORING_NAMESPACE
@@ -182,6 +212,7 @@ fi
 log_info "Installing/upgrading Helm release: $HELM_RELEASE"
 if helm upgrade --install $HELM_RELEASE ./chart \
   --namespace $NAMESPACE \
+  --create-namespace \
   --set frontend.image.repository=$REGISTRY/library/frontend \
   --set frontend.image.tag=latest \
   --set monitoring.enabled=true \
