@@ -37,6 +37,9 @@ frontend:
     tag: latest
     pullPolicy: Always
   containerPort: 3000
+  env:
+    nodeEnv: production
+    apiBase: "http://gateway.openfaas.svc.cluster.local:8080/function"
   service:
     type: ClusterIP
     port: 80

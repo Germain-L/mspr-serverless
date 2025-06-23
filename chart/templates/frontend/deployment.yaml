@@ -28,7 +28,9 @@ spec:
           name: http
         env:
         - name: NODE_ENV
-          value: production
+          value: {{ .Values.frontend.env.nodeEnv | default "production" }}
+        - name: VITE_API_BASE
+          value: {{ .Values.frontend.env.apiBase | quote }}
         resources:
           {{- toYaml .Values.frontend.resources | nindent 10 }}
         {{- if .Values.frontend.livenessProbe.enabled }}
