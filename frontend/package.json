@@ -1,11 +1,16 @@
 {
 	"name": "frontend",
 	"private": true,
-	"version": "0.0.1",
+	"version": "1.0.0",
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
+		"build:version": "./build-with-version.sh",
+		"version:show": "node -p \"'v' + require('./package.json').version\"",
+		"version:bump": "npm version patch --no-git-tag-version",
+		"version:bump:minor": "npm version minor --no-git-tag-version",
+		"version:bump:major": "npm version major --no-git-tag-version",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",

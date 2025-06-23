@@ -6,7 +6,7 @@
   import Alert from '$lib/components/ui/Alert.svelte';
   import QRCodeDisplay from '$lib/components/ui/QRCodeDisplay.svelte';
   import { AuthAPI } from '$lib/utils/api';
-  import { handleApiError, isValidTOTP } from '$lib/utils/error-handler';
+  import { handleApiError } from '$lib/utils/error-handler';
 
   let username = $state($page.url.searchParams.get('username') || '');
   let userId = $state($page.url.searchParams.get('userId') || '');
@@ -14,7 +14,6 @@
   let error = $state('');
   let success = $state(false);
   let qrCodeData = $state('');
-  let verificationCode = $state('');
   let setupComplete = $state(false);
 
   // Auto-generate 2FA setup when component loads
@@ -54,42 +53,11 @@
     }
   }
 
-  async function verify2FA() {
-    if (!verificationCode.trim()) {
-      error = 'Please enter the verification code';
-      return;
-    }
-
-    if (!isValidTOTP(verificationCode)) {
-      error = 'Please enter a valid 6-digit code';
-      return;
-    }
-
-    loading = true;
-    error = '';
-
-    try {
-      // Test authentication with the 2FA code to verify it works
-      const response = await AuthAPI.authenticate(username, '', verificationCode, '2fa_setup_verification');
-      
-      if (response.error && !response.error.includes('Invalid username or password')) {
-        // If the error is not about password (which is expected since we're not providing one)
-        // then it might be about the TOTP code
-        if (response.error.includes('Invalid TOTP code')) {
-          error = 'Invalid verification code. Please check your authenticator app and try again.';
-          loading = false;
-          return;
-        }
-      }
-
-      // If we get here and the only error is about password, the TOTP is working
-      setupComplete = true;
-      success = true;
-    } catch (err) {
-      error = handleApiError(err);
-    } finally {
-      loading = false;
-    }
+  function completeLaterVerification() {
+    // For 2FA setup, we don't need to verify the code immediately
+    // The user will verify it during their next login
+    setupComplete = true;
+    success = true;
   }
 
   function goToLogin() {
@@ -146,44 +114,30 @@
             <ol class="text-sm text-blue-700 list-decimal list-inside space-y-1">
               <li>Install an authenticator app (Google Authenticator, Authy, 1Password, etc.)</li>
               <li>Open the app and scan the QR code above</li>
-              <li>Enter the 6-digit code from your app below to verify the setup</li>
+              <li>Your 2FA is now set up! You'll use codes from your app when logging in.</li>
             </ol>
           </div>
 
-          <form class="space-y-4" onsubmit={(e) => e.preventDefault()}>
-            <Input
-              id="verification-code"
-              name="verification-code"
-              type="text"
-              placeholder="Enter 6-digit code"
-              label="Verification Code"
-              bind:value={verificationCode}
-              required
+          <div class="space-y-3">
+            <Button 
+              type="button"
+              onclick={completeLaterVerification}
+              loading={loading}
+              class="w-full"
+            >
+              Complete Setup
+            </Button>
+            
+            <Button 
+              type="button"
+              variant="ghost"
+              onclick={skipSetup}
               disabled={loading}
-              autocomplete="one-time-code"
-            />
-
-            <div class="space-y-3">
-              <Button 
-                type="button"
-                onclick={verify2FA}
-                loading={loading}
-                class="w-full"
-              >
-                Verify and Complete Setup
-              </Button>
-              
-              <Button 
-                type="button"
-                variant="ghost"
-                onclick={skipSetup}
-                disabled={loading}
-                class="w-full"
-              >
-                Skip 2FA Setup
-              </Button>
-            </div>
-          </form>
+              class="w-full"
+            >
+              Skip 2FA Setup
+            </Button>
+          </div>
         {/if}
       </div>
     {:else}
@@ -191,7 +145,7 @@
       <div class="space-y-6">
         <Alert 
           type="success" 
-          message="2FA setup completed successfully! Your account is now secured with two-factor authentication." 
+          message="2FA setup completed successfully! Your account is now configured for two-factor authentication." 
         />
 
         <div class="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
@@ -200,7 +154,7 @@
           </svg>
           <h3 class="text-lg font-medium text-green-900 mb-2">Setup Complete!</h3>
           <p class="text-green-700">
-            Your account is now protected with 2FA. You'll need both your password and authenticator code to sign in.
+            Your account is now configured for 2FA. You'll need both your password and an authenticator code to sign in.
           </p>
         </div>
 

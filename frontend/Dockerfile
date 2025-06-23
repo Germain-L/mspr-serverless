@@ -1,6 +1,9 @@
 # Multi-stage build for SvelteKit frontend with Node.js
 FROM node:20-alpine AS builder
 
+# Install git (needed for version script)
+RUN apk add --no-cache git
+
 # Set working directory
 WORKDIR /app
 
@@ -13,8 +16,8 @@ RUN npm ci --only=production=false
 # Copy source code
 COPY . .
 
-# Build the application
-RUN npm run build
+# Make build script executable and run it
+RUN chmod +x ./docker-build.sh && ./docker-build.sh
 
 # Production stage
 FROM node:20-alpine AS production
