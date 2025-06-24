@@ -86,7 +86,7 @@ def handle(event, context):
        le mot de passe haché et la date de création.
     8. Création d'un QR code contenant le nom d'utilisateur et le mot de passe en clair.
     9. Renvoi d'une réponse HTTP avec le statut, un message, l'ID de l'utilisateur,
-       le mot de passe en clair (pour démo) et le QR code encodé en base64.
+       le mot de passe en clair et le QR code encodé en base64.
 
     Args:
         event: L'objet événement contenant les détails de la requête (par exemple, corps, en-têtes).
@@ -158,7 +158,7 @@ def handle(event, context):
                 "status": "success",
                 "message": "Password generated and user created successfully",
                 "user_id": user_id,
-                "password": password,  # Only included for demo purposes, remove in production
+                "password": password,
                 "qr_code": qr_code_base64
             })
         }

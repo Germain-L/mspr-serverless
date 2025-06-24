@@ -26,4 +26,3 @@ functions:
     lang: python3-http
     handler: ./check-user-status
     image: registry.germainleignel.com/library/check-user-status:latest
-
